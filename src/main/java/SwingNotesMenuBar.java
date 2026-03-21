@@ -1,14 +1,23 @@
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatLightLaf;
+import com.jthemedetecor.OsThemeDetector;
+
 import javax.swing.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.util.prefs.Preferences;
 
 public class SwingNotesMenuBar extends JMenuBar {
 
-    public SwingNotesMenuBar(JTextArea textArea, FileManager fileManager) {
+    public SwingNotesMenuBar(JTextArea textArea, FileManager fileManager, Preferences prefs, JFrame window) {
+        // -=-=- Menu -=-=-
         JMenu mnPlik = new JMenu("Plik");
         mnPlik.setMnemonic(KeyEvent.VK_P);
         JMenu mnEdycja = new JMenu("Edycja");
-        mnEdycja.setMnemonic('E');
+        mnEdycja.setMnemonic(KeyEvent.VK_E);
+        JMenu mnOkno = new JMenu("Okno");
+        mnOkno.setMnemonic(KeyEvent.VK_O);
+
 
         // -=-=- Pozycje menu Plik -=-=-
         JMenuItem pzNowy = new JMenuItem("Nowy plik", KeyEvent.VK_N);
@@ -39,6 +48,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         mnPlik.add(pzZapiszJako);
         mnPlik.addSeparator();
         mnPlik.add(pzKoniec);
+
 
         // -=-=- Pozycje menu Edycja -=-=-
         JMenuItem pzKopiuj = new JMenuItem("Kopiuj");
@@ -75,7 +85,40 @@ public class SwingNotesMenuBar extends JMenuBar {
         mnEdycja.add(pzDopisywanie);
         mnEdycja.add(pzNadpisywanie);
 
+
+        // -=-=- Pozycje menu Okno -=-=-
+        JMenu pmnMotyw = new JMenu("Motyw");
+
+        JMenuItem pzCzarny = new JMenuItem("Czarny");
+        pzCzarny.addActionListener(e -> {
+            prefs.put("theme", "dark");
+            FlatDarkLaf.setup();
+            SwingUtilities.updateComponentTreeUI(window);
+        });
+
+        JMenuItem pzBialy = new JMenuItem("Biały");
+        pzBialy.addActionListener(e -> {
+            prefs.put("theme", "light");
+            FlatLightLaf.setup();
+            SwingUtilities.updateComponentTreeUI(window);
+        });
+
+        JMenuItem pzSystem = new JMenuItem("Systemowy");
+        pzSystem.addActionListener(e -> {
+            prefs.put("theme", "system");
+            OsThemeDetector detector = OsThemeDetector.getDetector();
+            if (detector.isDark()) FlatDarkLaf.setup();
+            else FlatLightLaf.setup();
+            SwingUtilities.updateComponentTreeUI(window);
+        });
+
+        mnOkno.add(pmnMotyw);
+        pmnMotyw.add(pzCzarny);
+        pmnMotyw.add(pzBialy);
+        pmnMotyw.add(pzSystem);
+
         add(mnPlik);
         add(mnEdycja);
+        add(mnOkno);
     }
 }
