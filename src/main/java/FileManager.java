@@ -7,6 +7,8 @@ public class FileManager {
     private File currentFile = null;
     private boolean isFileChanged = false;
     private final JFrame window;
+    @SuppressWarnings("FieldMayBeFinal")
+    private int[] pozycjaSzukaniaWczesniejsza = {0};
 
     public FileManager(JFrame window) {
         this.window = window;
@@ -77,11 +79,36 @@ public class FileManager {
         window.setTitle("SwingNotes - Nowy plik");
     }
 
+    public void znajdz(JTextArea textArea, String szukany) {
+        String tekst = textArea.getText();
+        int pozycja = tekst.indexOf(szukany, pozycjaSzukaniaWczesniejsza[0]); //zwraca -1, jeśli nie znaleziono
+        if (pozycja != -1) {
+            textArea.select(pozycja, pozycja + szukany.length()); //zaznaczenie szukanego wyrażenia
+            pozycjaSzukaniaWczesniejsza[0] = pozycja + 1;
+        }
+    }
+
+    public void zamien(JTextArea textArea, String zamienNa) {
+        if (textArea.getSelectedText() != null) {
+            textArea.replaceSelection(zamienNa);
+        }
+    }
+
+    public void zamienWszystko(JTextArea textArea, String szukany, String zamienNa) {
+        if (!szukany.isEmpty()) {
+            textArea.setText(textArea.getText().replace(szukany, zamienNa));
+        }
+    }
+
     public boolean isFileChanged() {
         return isFileChanged;
     }
 
     public void setFileChanged(boolean fileChanged) {
         isFileChanged = fileChanged;
+    }
+
+    public void resetPozycjaSzukania() {
+        pozycjaSzukaniaWczesniejsza[0] = 0;
     }
 }

@@ -5,6 +5,7 @@ import com.jthemedetecor.OsThemeDetector;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.undo.UndoManager;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -20,26 +21,37 @@ public class Main {
 
         // obszar tekstu
         JTextArea textArea = new JTextArea();
-        textArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
-        textArea.setLineWrap(true);
+
+        String fontName = prefs.get("fontName", "Monospaced");
+        int fontSize = prefs.getInt("fontSize", 14);
+        textArea.setFont(new Font(fontName, Font.PLAIN, fontSize));
+
+        boolean lineWrap = prefs.getBoolean("lineWrap", true);
+        textArea.setLineWrap(lineWrap);
         textArea.setWrapStyleWord(true);
 
         // ustawienie możliwości scrollowania obszaru tekstu
         JScrollPane scrollPane = new JScrollPane(textArea);
 
         // pasek statusu dokumentu na dole
-        JLabel statusBar = new JLabel("Znaki: 0 | Linie: 1");
+        JLabel statusBar = new JLabel("Znaki: 0 | Słowa: 0 | Linie: 1");
         statusBar.setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 6));
 
+        UndoManager undoManager = new UndoManager();
+        textArea.getDocument().addUndoableEditListener(undoManager);
+
         FileManager fileManager = new FileManager(window);
-        window.setJMenuBar(new SwingNotesMenuBar(textArea, fileManager, prefs, window));
+        window.setJMenuBar(new SwingNotesMenuBar(textArea, fileManager, prefs, window, undoManager));
+
+        textArea.setComponentPopupMenu(new SwingNotesContextMenu(textArea, undoManager));
 
         // aktualizacja paska statusu przy każdej zmianie tekstu
         textArea.getDocument().addDocumentListener(new DocumentListener() {
             private void updateStatusBarOnChange() {
                 int znaki = textArea.getText().length();
                 int linie = textArea.getLineCount();
-                statusBar.setText("Znaki: " + znaki + " | Linie: " + linie);
+                int slowa = textArea.getText().split("\\s+").length;
+                statusBar.setText("Znaki: " + znaki + " | Słowa: " + slowa + " | Linie: " + linie);
                 fileManager.setFileChanged(true);
             }
             public void insertUpdate(DocumentEvent e) { updateStatusBarOnChange(); }
