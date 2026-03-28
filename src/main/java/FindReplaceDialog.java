@@ -9,42 +9,42 @@ public class FindReplaceDialog extends JDialog {
 
         JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
 
-        JTextField txtSzukaj = new JTextField();
-        JTextField txtZamien = new JTextField();
+        JTextField txtFind = new JTextField();
+        JTextField txtReplace = new JTextField();
 
-        txtSzukaj.getDocument().addDocumentListener(new DocumentListener() {
-            private void reset() { fileManager.resetPozycjaSzukania(); }
+        txtFind.getDocument().addDocumentListener(new DocumentListener() {
+            private void reset() { fileManager.resetSearchPosition(); }
             public void insertUpdate(DocumentEvent e) { reset(); }
             public void removeUpdate(DocumentEvent e) { reset(); }
             public void changedUpdate(DocumentEvent e) { reset(); }
         });
 
-        txtSzukaj.setPreferredSize(new Dimension(150, 25));
-        txtZamien.setPreferredSize(new Dimension(150, 25));
+        txtFind.setPreferredSize(new Dimension(150, 25));
+        txtReplace.setPreferredSize(new Dimension(150, 25));
 
-        JButton btnSzukaj = new JButton("Szukaj");
-        JButton btnZamien = new JButton("Zamień");
-        JButton btnZamienWszystko = new JButton("Zamień wszystko");
+        JButton btnFind = new JButton("Szukaj");
+        JButton btnReplace = new JButton("Zamień");
+        JButton btnReplaceAll = new JButton("Zamień wszystko");
 
-        btnSzukaj.addActionListener(event -> fileManager.znajdz(textArea, txtSzukaj.getText()));
+        btnFind.addActionListener(event -> fileManager.find(textArea, txtFind.getText()));
 
-        btnZamien.addActionListener(event -> fileManager.zamien(textArea, txtZamien.getText()));
+        btnReplace.addActionListener(event -> fileManager.replace(textArea, txtReplace.getText()));
 
-        btnZamienWszystko.addActionListener(event -> fileManager.zamienWszystko(textArea, txtSzukaj.getText(), txtZamien.getText()));
+        btnReplaceAll.addActionListener(event -> fileManager.replaceAll(textArea, txtFind.getText(), txtReplace.getText()));
 
         panel.add(new JLabel("Szukaj:"));
-        panel.add(txtSzukaj);
+        panel.add(txtFind);
         panel.add(new JLabel("Zamień na:"));
-        panel.add(txtZamien);
-        panel.add(btnSzukaj);
-        panel.add(btnZamien);
+        panel.add(txtReplace);
+        panel.add(btnFind);
+        panel.add(btnReplace);
 
-        JPanel panelGlowny = new JPanel(new BorderLayout(5, 5));
-        panelGlowny.add(panel, BorderLayout.CENTER);
-        panelGlowny.add(btnZamienWszystko, BorderLayout.SOUTH);
-        panelGlowny.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); //dodany padding, żeby nie było aż tak blisko krawędzi
+        JPanel mainPanel = new JPanel(new BorderLayout(5, 5));
+        mainPanel.add(panel, BorderLayout.CENTER);
+        mainPanel.add(btnReplaceAll, BorderLayout.SOUTH);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); //dodany padding, żeby nie było aż tak blisko krawędzi
 
-        add(panelGlowny);
+        add(mainPanel);
         setLocationRelativeTo(window);
         pack(); // dopasowuje rozmiar do zawartości
     }

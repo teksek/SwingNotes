@@ -48,10 +48,10 @@ public class Main {
         // aktualizacja paska statusu przy każdej zmianie tekstu
         textArea.getDocument().addDocumentListener(new DocumentListener() {
             private void updateStatusBarOnChange() {
-                int znaki = textArea.getText().length();
-                int linie = textArea.getLineCount();
-                int slowa = textArea.getText().split("\\s+").length;
-                statusBar.setText("Znaki: " + znaki + " | Słowa: " + slowa + " | Linie: " + linie);
+                int charsCount = textArea.getText().length();
+                int linesCount = textArea.getLineCount();
+                int wordCount = textArea.getText().split("\\s+").length;
+                statusBar.setText("Znaki: " + charsCount + " | Słowa: " + wordCount + " | Linie: " + linesCount);
                 fileManager.setFileChanged(true);
             }
             public void insertUpdate(DocumentEvent e) { updateStatusBarOnChange(); }
@@ -62,19 +62,7 @@ public class Main {
         window.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                if(fileManager.isFileChanged()) {
-                    int choice = JOptionPane.showOptionDialog(window,
-                            "Czy zapisać zmiany przed zamknięciem programu?",
-                            "Zamykanie", JOptionPane.YES_NO_CANCEL_OPTION,
-                            JOptionPane.QUESTION_MESSAGE, null,
-                            new String[]{"Zapisz", "Nie zapisuj", "Anuluj"}, 0);
-                    if (choice == 0) {
-                        fileManager.saveAs(textArea);
-                    } else if (choice == 2) {
-                        return;
-                    }
-                }
-                System.exit(0);
+                closeApp(fileManager, textArea);
             }
         });
 
@@ -84,6 +72,22 @@ public class Main {
         window.setSize(new Dimension(800, 600));
         window.setLocationRelativeTo(null);
         window.setVisible(true);
+    }
+
+    public static void closeApp(FileManager fileManager, JTextArea textArea) {
+        if(fileManager.isFileChanged()) {
+            int choice = JOptionPane.showOptionDialog(window,
+                    "Czy zapisać zmiany przed zamknięciem programu?",
+                    "Zamykanie", JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE, null,
+                    new String[]{"Zapisz", "Nie zapisuj", "Anuluj"}, 0);
+            if (choice == 0) {
+                fileManager.saveAs(textArea);
+            } else if (choice == 2) {
+                return;
+            }
+        }
+        System.exit(0);
     }
 
     public static void main(String[] args) {

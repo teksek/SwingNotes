@@ -5,50 +5,52 @@ import java.awt.event.KeyEvent;
 
 public class SwingNotesContextMenu extends JPopupMenu {
     public SwingNotesContextMenu(JTextArea textArea, UndoManager undoManager) {
-        JMenuItem pzKopiuj = new JMenuItem("Kopiuj");
-        pzKopiuj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK));
-        pzKopiuj.addActionListener(e -> textArea.copy());
+        // Nazwy zmiennych pozycji menu zawierają w sobie suffix: -Item (np. copyItem)
 
-        JMenuItem pzWytnij = new JMenuItem("Wytnij");
-        pzWytnij.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK));
-        pzWytnij.addActionListener(e -> textArea.cut());
+        JMenuItem copyItem = new JMenuItem("Kopiuj");
+        copyItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK));
+        copyItem.addActionListener(e -> textArea.copy());
 
-        JMenuItem pzWklej = new JMenuItem("Wklej");
-        pzWklej.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK));
-        pzWklej.addActionListener(e -> textArea.paste());
+        JMenuItem cutItem = new JMenuItem("Wytnij");
+        cutItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK));
+        cutItem.addActionListener(e -> textArea.cut());
 
-        JMenuItem pzCofnij = new JMenuItem("Cofnij");
-        pzCofnij.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK));
-        pzCofnij.addActionListener(e -> {
+        JMenuItem pasteItem = new JMenuItem("Wklej");
+        pasteItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK));
+        pasteItem.addActionListener(e -> textArea.paste());
+
+        JMenuItem undoItem = new JMenuItem("Cofnij");
+        undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK));
+        undoItem.addActionListener(e -> {
             if (undoManager.canUndo()) {
                 undoManager.undo();
             }
         });
 
-        JMenuItem pzPonow = new JMenuItem("Ponów");
-        pzPonow.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK));
-        pzPonow.addActionListener(e -> {
+        JMenuItem redoItem = new JMenuItem("Ponów");
+        redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK));
+        redoItem.addActionListener(e -> {
             if (undoManager.canRedo()) {
                 undoManager.redo();
             }
         });
 
-        JMenuItem pzZaznaczWszystko = new JMenuItem("Zaznacz wszystko");
-        pzZaznaczWszystko.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK));
-        pzZaznaczWszystko.addActionListener(e -> textArea.selectAll());
+        JMenuItem selectEverythingItem = new JMenuItem("Zaznacz wszystko");
+        selectEverythingItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK));
+        selectEverythingItem.addActionListener(e -> textArea.selectAll());
 
-        JMenuItem pzUsun = new JMenuItem("Usuń");
-        pzUsun.setAccelerator(KeyStroke.getKeyStroke((char) KeyEvent.VK_DELETE));
-        pzUsun.addActionListener(e -> textArea.replaceSelection(""));
+        JMenuItem deleteItem = new JMenuItem("Usuń");
+        deleteItem.setAccelerator(KeyStroke.getKeyStroke((char) KeyEvent.VK_DELETE));
+        deleteItem.addActionListener(e -> textArea.replaceSelection(""));
 
-        add(pzKopiuj);
-        add(pzWytnij);
-        add(pzWklej);
+        add(copyItem);
+        add(cutItem);
+        add(pasteItem);
         addSeparator();
-        add(pzCofnij);
-        add(pzPonow);
+        add(undoItem);
+        add(redoItem);
         addSeparator();
-        add(pzZaznaczWszystko);
-        add(pzUsun);
+        add(selectEverythingItem);
+        add(deleteItem);
     }
 }

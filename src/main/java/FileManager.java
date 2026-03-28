@@ -12,7 +12,7 @@ public class FileManager {
     private boolean isFileChanged = false;
     private final JFrame window;
     @SuppressWarnings("FieldMayBeFinal")
-    private int[] pozycjaSzukaniaWczesniejsza = {0}; //trick, bo Java wymaga, żeby zmienne w anonimowych klasach się nie zmieniały
+    private int[] previousSearchPosition = {0}; //trick, bo Java wymaga, żeby zmienne w anonimowych klasach się nie zmieniały
 
     public FileManager(JFrame window) {
         this.window = window;
@@ -56,7 +56,7 @@ public class FileManager {
         }
 
         recentFilesList.remove(path); //usuwa pierwsze napotkanie
-        recentFilesList.add(0, path);
+        recentFilesList.addFirst(path);
 
         int maxLength = Integer.parseInt(prefs.get("recentFilesMenuLength", "5"));
         if(recentFilesList.size() > maxLength) {
@@ -123,29 +123,32 @@ public class FileManager {
 
 
     // -=- wyszukiwanie i zamienianie -=-
-    public void znajdz(JTextArea textArea, String szukany) {
-        String tekst = textArea.getText();
-        int pozycja = tekst.indexOf(szukany, pozycjaSzukaniaWczesniejsza[0]); //zwraca -1, jeśli nie znaleziono
-        if (pozycja != -1) {
-            textArea.select(pozycja, pozycja + szukany.length()); //zaznaczenie szukanego wyrażenia
-            pozycjaSzukaniaWczesniejsza[0] = pozycja + 1;
+    public void find(JTextArea textArea, String searchValue) {
+        String text = textArea.getText();
+        int cursorPosition = text.indexOf(searchValue, previousSearchPosition[0]); //zwraca -1, jeśli nie znaleziono
+        if (cursorPosition != -1) {
+            textArea.select(cursorPosition, cursorPosition + searchValue.length()); //zaznaczenie szukanego wyrażenia
+            previousSearchPosition[0] = cursorPosition + 1;
         }
-        else if (pozycja == -1) {
-            resetPozycjaSzukania();
-            textArea.select(pozycja++, pozycja + szukany.length());
-            pozycjaSzukaniaWczesniejsza[0] = pozycja + 1;
+        else {
+            resetSearchPosition();
+            cursorPosition = text.indexOf(searchValue);
+            if (cursorPosition != -1) {
+                textArea.select(cursorPosition, cursorPosition + searchValue.length());
+                previousSearchPosition[0] = cursorPosition + 1;
+            }
         }
     }
 
-    public void zamien(JTextArea textArea, String zamienNa) {
+    public void replace(JTextArea textArea, String replaceWith) {
         if (textArea.getSelectedText() != null) {
-            textArea.replaceSelection(zamienNa);
+            textArea.replaceSelection(replaceWith);
         }
     }
 
-    public void zamienWszystko(JTextArea textArea, String szukany, String zamienNa) {
-        if (!szukany.isEmpty()) {
-            textArea.setText(textArea.getText().replace(szukany, zamienNa));
+    public void replaceAll(JTextArea textArea, String searchValue, String replaceWith) {
+        if (!searchValue.isEmpty()) {
+            textArea.setText(textArea.getText().replace(searchValue, replaceWith));
         }
     }
     // -=--=--=--=--=--=--=--=--=--=--=-
@@ -158,7 +161,7 @@ public class FileManager {
         isFileChanged = fileChanged;
     }
 
-    public void resetPozycjaSzukania() {
-        pozycjaSzukaniaWczesniejsza[0] = 0;
+    public void resetSearchPosition() {
+        previousSearchPosition[0] = 0;
     }
 }
