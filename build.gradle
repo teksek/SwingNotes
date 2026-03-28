@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'io.github.teksek'
-version = '1.0'
+version = '1.1'
 
 application {
     mainClass = 'Main'
@@ -27,6 +27,11 @@ jar {
     from {
         configurations.runtimeClasspath.collect {
             it.isDirectory() ? it : zipTree(it)
+        }
+    }
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
         }
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

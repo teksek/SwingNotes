@@ -2,33 +2,75 @@ import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.prefs.Preferences;
 
 public class FileManager {
     private File currentFile = null;
     private boolean isFileChanged = false;
     private final JFrame window;
     @SuppressWarnings("FieldMayBeFinal")
-    private int[] pozycjaSzukaniaWczesniejsza = {0};
+    private int[] pozycjaSzukaniaWczesniejsza = {0}; //trick, bo Java wymaga, żeby zmienne w anonimowych klasach się nie zmieniały
 
     public FileManager(JFrame window) {
         this.window = window;
     }
 
-    public void openFile(JTextArea textArea) {
-        JFileChooser chooser = new JFileChooser();
-        if (chooser.showOpenDialog(window) == JFileChooser.APPROVE_OPTION) {
-            try {
+    public void openFile(JTextArea textArea, String path, Preferences prefs) {
+        if (path == null) {
+            JFileChooser chooser = new JFileChooser();
+            if (chooser.showOpenDialog(window) == JFileChooser.APPROVE_OPTION) {
                 currentFile = chooser.getSelectedFile();
-                String fileContent = new String(Files.readAllBytes(currentFile.toPath()));
-                textArea.setText(fileContent);
-                setFileChanged(false);
-                window.setTitle("SwingNotes - " + currentFile.getName());
+                try {
+                    loadFile(textArea);
+                    addFileToRecents(prefs, currentFile.getAbsolutePath());
+                } catch (IOException ex) {
+                    JOptionPane.showMessageDialog(window,
+                            "Błąd odczytu pliku: " + ex.getMessage(),
+                            "Błąd", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } else {
+            currentFile = new File(path);
+            try {
+                loadFile(textArea);
+                addFileToRecents(prefs, path);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(window,
                         "Błąd odczytu pliku: " + ex.getMessage(),
                         "Błąd", JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    private void addFileToRecents(Preferences prefs, String path) {
+        String recents = prefs.get("recentFiles", "none");
+
+        List<String> recentFilesList;
+        if (recents.equals("none")) {
+            recentFilesList = new ArrayList<>();
+        } else {
+            recentFilesList = new ArrayList<>(Arrays.asList(recents.split(",")));
+        }
+
+        recentFilesList.remove(path); //usuwa pierwsze napotkanie
+        recentFilesList.add(0, path);
+
+        int maxLength = Integer.parseInt(prefs.get("recentFilesMenuLength", "5"));
+        if(recentFilesList.size() > maxLength) {
+            recentFilesList = new ArrayList<>(recentFilesList.subList(0, maxLength));
+        }
+
+        prefs.put("recentFiles", String.join(",", recentFilesList));
+    }
+
+    private void loadFile(JTextArea textArea) throws IOException {
+        String fileContent = new String(Files.readAllBytes(currentFile.toPath()));
+        textArea.setText(fileContent);
+        setFileChanged(false);
+        window.setTitle("SwingNotes - " + currentFile.getName());
     }
 
     public void saveFile(JTextArea textArea) {
@@ -79,11 +121,18 @@ public class FileManager {
         window.setTitle("SwingNotes - Nowy plik");
     }
 
+
+    // -=- wyszukiwanie i zamienianie -=-
     public void znajdz(JTextArea textArea, String szukany) {
         String tekst = textArea.getText();
         int pozycja = tekst.indexOf(szukany, pozycjaSzukaniaWczesniejsza[0]); //zwraca -1, jeśli nie znaleziono
         if (pozycja != -1) {
             textArea.select(pozycja, pozycja + szukany.length()); //zaznaczenie szukanego wyrażenia
+            pozycjaSzukaniaWczesniejsza[0] = pozycja + 1;
+        }
+        else if (pozycja == -1) {
+            resetPozycjaSzukania();
+            textArea.select(pozycja++, pozycja + szukany.length());
             pozycjaSzukaniaWczesniejsza[0] = pozycja + 1;
         }
     }
@@ -99,6 +148,7 @@ public class FileManager {
             textArea.setText(textArea.getText().replace(szukany, zamienNa));
         }
     }
+    // -=--=--=--=--=--=--=--=--=--=--=-
 
     public boolean isFileChanged() {
         return isFileChanged;

@@ -87,7 +87,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        OsThemeDetector detector = OsThemeDetector.getDetector();
+        OsThemeDetector detector = OsThemeDetector.getDetector(); //sprawdza, czy system ma ciemny motyw i automatycznie dobiera odpowiedni.
         prefs = Preferences.userNodeForPackage(Main.class);
         String theme = prefs.get("theme", "system");
 
@@ -102,7 +102,7 @@ public class Main {
                     if (isDark) FlatDarkLaf.setup();
                     else FlatLightLaf.setup();
                     if (window != null)
-                        SwingUtilities.updateComponentTreeUI(window);
+                        SwingUtilities.updateComponentTreeUI(window); //odświeża wszystkie komponenty, żeby motyw zadziałał bez restartu
                 }));
             }
         }

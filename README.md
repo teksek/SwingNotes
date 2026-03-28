@@ -19,6 +19,8 @@ Prosty notatnik desktopowy napisany w Javie z użyciem biblioteki Swing.
 - Pytanie o zapis przy zamykaniu lub tworzeniu nowego pliku
 - Skróty klawiszowe (Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Ctrl+F, Ctrl+Z, Ctrl+Y...)
 - Zapamiętywanie preferencji użytkownika (czcionka, zawijanie linii, motyw)
+- Drukowanie zawartości
+- Ostatnio otwierane pliki w menu Plik z możliwością ustawienia liczby przechowywanych pozycji i ich wyczyszczenia
 
 ## Technologie
 
@@ -52,4 +54,9 @@ src/main/java/
 
 ## Kontekst
 
-Projekt edukacyjny stworzony w ramach nauki programowania w technikum. Rozbudowana wersja ćwiczenia z zajęć — dodane m.in. rzeczywisty I/O plików, obsługa preferencji, motywy UI i wiele innych funkcji.
+Projekt edukacyjny stworzony w ramach nauki programowania w technikum. Rozbudowana wersja ćwiczenia z zajęć — dodane m.in. rzeczywisty I/O plików, obsługa preferencji, motywy UI, ostatnio otwierane pliki, drukowanie i wiele innych funkcji.
+
+## Planowane funkcje (v1.x)
+- Obsługa wielu dokumentów w zakładkach
+- Przeciąganie i upuszczanie plików (drag-and-drop)
+- Implementacja RTextScrollPane

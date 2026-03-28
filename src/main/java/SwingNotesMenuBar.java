@@ -8,6 +8,9 @@ import javax.swing.undo.UndoManager;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.print.PrinterException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.prefs.Preferences;
 
 public class SwingNotesMenuBar extends JMenuBar {
@@ -20,6 +23,8 @@ public class SwingNotesMenuBar extends JMenuBar {
         mnEdycja.setMnemonic(KeyEvent.VK_E);
         JMenu mnWidok = new JMenu("Widok");
         mnWidok.setMnemonic(KeyEvent.VK_O);
+        JMenu mnPomoc = new JMenu("Pomoc");
+        mnPomoc.setMnemonic(KeyEvent.VK_P);
 
 
         // -=-=- Pozycje menu Plik -=-=-
@@ -27,9 +32,16 @@ public class SwingNotesMenuBar extends JMenuBar {
         pzNowy.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK));
         pzNowy.addActionListener(e -> fileManager.newFile(textArea));
 
+        JMenu pmnOstatnioOtwierane = new JMenu("Ostatnio otwierane");
+        pmnOstatnioOtwierane.setMnemonic(KeyEvent.VK_R);
+        makeRecentlyOpenedFilesMenuContent(textArea, fileManager, prefs, pmnOstatnioOtwierane, window);
+
         JMenuItem pzOtworz = new JMenuItem("Otwórz plik", KeyEvent.VK_O);
         pzOtworz.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK));
-        pzOtworz.addActionListener(e -> fileManager.openFile(textArea));
+        pzOtworz.addActionListener(e -> {
+            fileManager.openFile(textArea, null, prefs);
+            makeRecentlyOpenedFilesMenuContent(textArea, fileManager, prefs, pmnOstatnioOtwierane, window);
+        });
 
         JMenuItem pzZapisz = new JMenuItem("Zapisz", KeyEvent.VK_Z);
         pzZapisz.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK));
@@ -39,6 +51,16 @@ public class SwingNotesMenuBar extends JMenuBar {
         pzZapiszJako.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S,
                 InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK));
         pzZapiszJako.addActionListener(e -> fileManager.saveAs(textArea));
+
+        JMenuItem pzDrukuj = new JMenuItem("Drukuj");
+        pzDrukuj.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.CTRL_DOWN_MASK));
+        pzDrukuj.addActionListener(e -> {
+            try {
+                textArea.print();
+            } catch (PrinterException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
 
         JMenuItem pzZakoncz = new JMenuItem("Zakończ", KeyEvent.VK_K);
         pzZakoncz.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK));
@@ -60,9 +82,11 @@ public class SwingNotesMenuBar extends JMenuBar {
 
         mnPlik.add(pzNowy);
         mnPlik.add(pzOtworz);
+        mnPlik.add(pmnOstatnioOtwierane);
         mnPlik.addSeparator();
         mnPlik.add(pzZapisz);
         mnPlik.add(pzZapiszJako);
+        mnPlik.add(pzDrukuj);
         mnPlik.addSeparator();
         mnPlik.add(pzZakoncz);
 
@@ -104,18 +128,9 @@ public class SwingNotesMenuBar extends JMenuBar {
         pzUsun.setAccelerator(KeyStroke.getKeyStroke((char) KeyEvent.VK_DELETE));
         pzUsun.addActionListener(e -> textArea.replaceSelection(""));
 
-        JRadioButtonMenuItem pzDopisywanie = new JRadioButtonMenuItem("Tryb dopisywania");
-        pzDopisywanie.setSelected(true);
-
-        JRadioButtonMenuItem pzNadpisywanie = new JRadioButtonMenuItem("Tryb zastępowania");
-
         JMenuItem pzZnajdzIZamien = new JMenuItem("Znajdź i zamień");
         pzZnajdzIZamien.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK));
         pzZnajdzIZamien.addActionListener(e -> new FindReplaceDialog(window, textArea, fileManager).setVisible(true));
-
-        ButtonGroup grpMenu = new ButtonGroup();
-        grpMenu.add(pzDopisywanie);
-        grpMenu.add(pzNadpisywanie);
 
         mnEdycja.add(pzKopiuj);
         mnEdycja.add(pzWytnij);
@@ -126,9 +141,6 @@ public class SwingNotesMenuBar extends JMenuBar {
         mnEdycja.addSeparator();
         mnEdycja.add(pzZaznaczWszystko);
         mnEdycja.add(pzUsun);
-        mnEdycja.addSeparator();
-        mnEdycja.add(pzDopisywanie);
-        mnEdycja.add(pzNadpisywanie);
         mnEdycja.addSeparator();
         mnEdycja.add(pzZnajdzIZamien);
 
@@ -189,8 +201,73 @@ public class SwingNotesMenuBar extends JMenuBar {
         mnWidok.add(pzZawijanieLinii);
         mnWidok.add(pzCzcionka);
 
+
+        // -=-=- Pozycje menu Pomoc -=-=-
+        JMenuItem pzOProgramie = new JMenuItem("O programie", KeyEvent.VK_N);
+        pzOProgramie.addActionListener(e -> {
+            JOptionPane.showMessageDialog(window, "SwingNotes 1.0\n" + "Prosty notatnik napisany w Javie z użyciem biblioteki Swing.", "O programie", JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        mnPomoc.add(pzOProgramie);
+
         add(mnPlik);
         add(mnEdycja);
         add(mnWidok);
+        add(mnPomoc);
+    }
+
+    private static void makeRecentlyOpenedFilesMenuContent(JTextArea textArea, FileManager fileManager, Preferences prefs, JMenu pmnOstatnioOtwierane, JFrame window) {
+        pmnOstatnioOtwierane.removeAll();
+        String recents = prefs.get("recentFiles", "none");
+
+        if(recents.equals("none")) {
+            JMenuItem pzNone = new JMenuItem("Brak");
+            pmnOstatnioOtwierane.add(pzNone);
+        } else {
+            String[] files = recents.split(",");
+            for (String path : files) {
+                JMenuItem pzPlik = new JMenuItem(path);
+                pzPlik.addActionListener(e -> fileManager.openFile(textArea, path, prefs));
+                pmnOstatnioOtwierane.add(pzPlik);
+            }
+        }
+
+        pmnOstatnioOtwierane.addSeparator();
+
+        JMenuItem pzHowManyRecentFilesDialog = new JMenuItem("Zmień ilość przechowywanych plików");
+        pzHowManyRecentFilesDialog.addActionListener(e -> {
+            String amount = JOptionPane.showInputDialog(window,
+                    "Ile ostatnio otwieranych plików pamiętać?",
+                    prefs.get("recentFilesMenuLength", "5"));
+            if (amount != null) {
+                try {
+                    int newMax = Integer.parseInt(amount);
+                    if (newMax < 1) throw new NumberFormatException();
+
+                    prefs.put("recentFilesMenuLength", amount);
+
+                    String recentFiles = prefs.get("recentFiles", "none");
+                    if (!recentFiles.equals("none")) {
+                        ArrayList<String> recentFilesList = new ArrayList<>(Arrays.asList(recentFiles.split(",")));
+                        if (recentFilesList.size() > newMax) {
+                            recentFilesList = new ArrayList<>(recentFilesList.subList(0, newMax));
+                            prefs.put("recentFiles", String.join(",", recentFilesList));
+                        }
+                    }
+                    makeRecentlyOpenedFilesMenuContent(textArea, fileManager, prefs, pmnOstatnioOtwierane, window);
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(window, "Podaj liczbę więszą od 0!", "Błąd", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        JMenuItem pzClear = new JMenuItem("Wyczyść");
+        pzClear.addActionListener(e -> {
+            prefs.put("recentFiles", "none");
+            makeRecentlyOpenedFilesMenuContent(textArea, fileManager, prefs, pmnOstatnioOtwierane, window);
+        });
+
+        pmnOstatnioOtwierane.add(pzHowManyRecentFilesDialog);
+        pmnOstatnioOtwierane.add(pzClear);
     }
 }
