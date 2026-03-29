@@ -2,9 +2,9 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 import org.drjekyll.fontchooser.FontDialog;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 
 import javax.swing.*;
-import javax.swing.undo.UndoManager;
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -15,7 +15,7 @@ import java.util.prefs.Preferences;
 
 public class SwingNotesMenuBar extends JMenuBar {
 
-    public SwingNotesMenuBar(JTextArea textArea, FileManager fileManager, Preferences prefs, JFrame window, UndoManager undoManager) {
+    public SwingNotesMenuBar(RSyntaxTextArea textArea, FileManager fileManager, Preferences prefs, JFrame window) {
         // Nazwy zmiennych menu zawierają w sobie suffix: -Menu (np. fileMenu) a podmenu zawierają suffix: -SubMenu
         // Nazwy zmiennych pozycji menu zawierają w sobie suffix: -Item (np. copyItem)
 
@@ -95,19 +95,11 @@ public class SwingNotesMenuBar extends JMenuBar {
 
         JMenuItem undoItem = new JMenuItem("Cofnij");
         undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK));
-        undoItem.addActionListener(e -> {
-            if (undoManager.canUndo()) {
-                undoManager.undo();
-            }
-        });
+        undoItem.addActionListener(e -> textArea.undoLastAction());
 
         JMenuItem redoItem = new JMenuItem("Ponów");
         redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK));
-        redoItem.addActionListener(e -> {
-            if (undoManager.canRedo()) {
-                undoManager.redo();
-            }
-        });
+        redoItem.addActionListener(e -> textArea.redoLastAction());
 
         JMenuItem selectEverythingItem = new JMenuItem("Zaznacz wszystko");
         selectEverythingItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK));
@@ -141,6 +133,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         blackThemeItem.addActionListener(e -> {
             prefs.put("theme", "dark");
             FlatDarkLaf.setup();
+            Main.setTextAreaTheme("dark.xml", textArea);
             SwingUtilities.updateComponentTreeUI(window);
         });
 
@@ -148,6 +141,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         whiteThemeItem.addActionListener(e -> {
             prefs.put("theme", "light");
             FlatLightLaf.setup();
+            Main.setTextAreaTheme("default.xml", textArea);
             SwingUtilities.updateComponentTreeUI(window);
         });
 
@@ -159,6 +153,19 @@ public class SwingNotesMenuBar extends JMenuBar {
             else FlatLightLaf.setup();
             SwingUtilities.updateComponentTreeUI(window);
         });
+
+        JMenu syntaxThemeSubMenu = new JMenu("Motyw składni");
+
+        String[] syntaxThemes = {"dark", "default", "druid", "eclipse", "idea", "monokai", "vs"};
+
+        for (String syntaxThemeName : syntaxThemes) {
+            JMenuItem syntaxThemeItem = new JMenuItem(syntaxThemeName);
+            syntaxThemeItem.addActionListener(e -> {
+                Main.setTextAreaTheme(syntaxThemeName + ".xml", textArea);
+                prefs.put("syntaxTheme", syntaxThemeName + ".xml");
+            });
+            syntaxThemeSubMenu.add(syntaxThemeItem);
+        }
 
         JCheckBoxMenuItem lineWrapItem = new JCheckBoxMenuItem("Zawijanie linii");
         lineWrapItem.setSelected(prefs.getBoolean("lineWrap", true));
@@ -187,6 +194,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         themeSubMenu.add(blackThemeItem);
         themeSubMenu.add(whiteThemeItem);
         themeSubMenu.add(systemThemeItem);
+        viewMenu.add(syntaxThemeSubMenu);
         viewMenu.add(lineWrapItem);
         viewMenu.add(fontItem);
 
@@ -203,7 +211,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         add(helpMenu);
     }
 
-    private static void makeRecentlyOpenedFilesMenuContent(JTextArea textArea, FileManager fileManager, Preferences prefs, JMenu pmnOstatnioOtwierane, JFrame window) {
+    private static void makeRecentlyOpenedFilesMenuContent(RSyntaxTextArea textArea, FileManager fileManager, Preferences prefs, JMenu pmnOstatnioOtwierane, JFrame window) {
         pmnOstatnioOtwierane.removeAll();
         String recents = prefs.get("recentFiles", "none");
 

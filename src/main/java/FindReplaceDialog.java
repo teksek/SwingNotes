@@ -1,10 +1,12 @@
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
 
 public class FindReplaceDialog extends JDialog {
-    public FindReplaceDialog(JFrame window, JTextArea textArea, FileManager fileManager) {
+    public FindReplaceDialog(JFrame window, RSyntaxTextArea textArea, FileManager fileManager) {
         super(window, "Znajdź i zamień", false);
 
         JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));

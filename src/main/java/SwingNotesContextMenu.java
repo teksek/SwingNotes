@@ -1,10 +1,11 @@
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+
 import javax.swing.*;
-import javax.swing.undo.UndoManager;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
 public class SwingNotesContextMenu extends JPopupMenu {
-    public SwingNotesContextMenu(JTextArea textArea, UndoManager undoManager) {
+    public SwingNotesContextMenu(RSyntaxTextArea textArea) {
         // Nazwy zmiennych pozycji menu zawierają w sobie suffix: -Item (np. copyItem)
 
         JMenuItem copyItem = new JMenuItem("Kopiuj");
@@ -21,19 +22,11 @@ public class SwingNotesContextMenu extends JPopupMenu {
 
         JMenuItem undoItem = new JMenuItem("Cofnij");
         undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK));
-        undoItem.addActionListener(e -> {
-            if (undoManager.canUndo()) {
-                undoManager.undo();
-            }
-        });
+        undoItem.addActionListener(e -> textArea.undoLastAction());
 
         JMenuItem redoItem = new JMenuItem("Ponów");
         redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK));
-        redoItem.addActionListener(e -> {
-            if (undoManager.canRedo()) {
-                undoManager.redo();
-            }
-        });
+        redoItem.addActionListener(e -> textArea.redoLastAction());
 
         JMenuItem selectEverythingItem = new JMenuItem("Zaznacz wszystko");
         selectEverythingItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK));
