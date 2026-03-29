@@ -6,21 +6,26 @@ Prosty notatnik desktopowy napisany w Javie z użyciem biblioteki Swing.
 
 - Tworzenie, otwieranie i zapisywanie plików tekstowych (.txt)
 - Automatyczne dodawanie rozszerzenia `.txt` przy zapisie
-- Cofnij / Ponów (UndoManager)
+- Cofnij / Ponów
 - Kopiuj, wytnij, wklej, zaznacz wszystko
 - Znajdź i zamień (z obsługą "Zamień wszystko")
 - Menu kontekstowe (prawy przycisk myszy)
 - Zmiana czcionki i rozmiaru
 - Włączanie/wyłączanie zawijania linii
-- Motywy: jasny, ciemny, systemowy (FlatLaf)
-- Zapisz / Zapisz jako z obsługą `JFileChooser`
+- Motywy UI: jasny, ciemny, systemowy (FlatLaf)
+- Podświetlanie składni na podstawie rozszerzenia pliku (RSyntaxTextArea)
+- Motywy składni: dark, monokai, eclipse, idea, vs i inne
+- Autouzupełnianie dla obsługiwanych języków (RSTALanguageSupport)
+- Numerowanie linii (RTextScrollPane)
+- Przeciąganie i upuszczanie plików (drag-and-drop)
+- Klikalne linki (Ctrl+LPM)
 - Pasek statusu z licznikiem znaków, słów i linii
 - Tytuł okna aktualizowany po otwarciu/zapisaniu pliku
 - Pytanie o zapis przy zamykaniu lub tworzeniu nowego pliku
 - Skróty klawiszowe (Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S, Ctrl+F, Ctrl+Z, Ctrl+Y...)
-- Zapamiętywanie preferencji użytkownika (czcionka, zawijanie linii, motyw)
+- Zapamiętywanie preferencji użytkownika (czcionka, zawijanie linii, motywy)
 - Drukowanie zawartości
-- Ostatnio otwierane pliki w menu Plik z możliwością ustawienia liczby przechowywanych pozycji i ich wyczyszczenia
+- Ostatnio otwierane pliki w menu Plik z możliwością ustawienia liczby pozycji i ich wyczyszczenia
 
 ## Technologie
 
@@ -30,6 +35,8 @@ Prosty notatnik desktopowy napisany w Javie z użyciem biblioteki Swing.
 - [FlatLaf 3.7.1](https://github.com/JFormDesigner/FlatLaf) — nowoczesne motywy UI
 - [jSystemThemeDetector 3.8](https://github.com/Dansoftowner/jSystemThemeDetector) — wykrywanie motywu systemowego
 - [FontChooser 3.1.0](https://github.com/dheid/fontchooser) — okno wyboru czcionki
+- [RSyntaxTextArea 3.4.1](https://github.com/bobbylight/RSyntaxTextArea) — podświetlanie składni i edytor kodu
+- [RSTALanguageSupport 3.3.1](https://github.com/bobbylight/RSTALanguageSupport) — autouzupełnianie dla języków programowania
 
 ## Uruchomienie
 
@@ -54,9 +61,7 @@ src/main/java/
 
 ## Kontekst
 
-Projekt edukacyjny stworzony w ramach nauki programowania w technikum. Rozbudowana wersja ćwiczenia z zajęć — dodane m.in. rzeczywisty I/O plików, obsługa preferencji, motywy UI, ostatnio otwierane pliki, drukowanie i wiele innych funkcji.
+Projekt edukacyjny stworzony w ramach nauki programowania w technikum. Rozbudowana wersja ćwiczenia z zajęć — dodane m.in. rzeczywisty I/O plików, podświetlanie składni, obsługa preferencji, motywy UI, drag-and-drop, ostatnio otwierane pliki, drukowanie i wiele innych funkcji.
 
 ## Planowane funkcje (v1.x)
 - Obsługa wielu dokumentów w zakładkach
-- Przeciąganie i upuszczanie plików (drag-and-drop)
-- Implementacja RTextScrollPane
