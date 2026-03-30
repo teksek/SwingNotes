@@ -6,6 +6,7 @@ Prosty notatnik desktopowy napisany w Javie z użyciem biblioteki Swing.
 
 - Tworzenie, otwieranie i zapisywanie plików tekstowych (.txt)
 - Automatyczne dodawanie rozszerzenia `.txt` przy zapisie
+- Obsługa wielu dokumentów jednocześnie dzięki systemowi zakładek (JTabbedPane)
 - Cofnij / Ponów
 - Kopiuj, wytnij, wklej, zaznacz wszystko
 - Znajdź i zamień (z obsługą "Zamień wszystko")
@@ -64,5 +65,6 @@ src/main/java/
 
 Projekt edukacyjny stworzony w ramach nauki programowania w technikum. Rozbudowana wersja ćwiczenia z zajęć — dodane m.in. rzeczywisty I/O plików, podświetlanie składni, obsługa preferencji, motywy UI, drag-and-drop, ostatnio otwierane pliki, drukowanie i wiele innych funkcji.
 
-## Planowane funkcje (v1.x)
-- Obsługa wielu dokumentów w zakładkach
+## Planowane funkcje (v1.4)
+- Możliwość zmiany kolejności zakładek (drag-and-drop na pasku zakładek)
+- Dodanie angielskiej wersji językowej i automatycznego ustalania języka na podstawie języka systemowego (i18n)
