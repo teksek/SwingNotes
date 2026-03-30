@@ -54,6 +54,7 @@ Lub otwórz projekt w IntelliJ IDEA i uruchom `Main.java`.
 src/main/java/
 ├── Main.java                  # Główne okno aplikacji
 ├── FileManager.java           # Operacje na plikach i logika szukania/zamiany
+├── Tab.java                   # Zakładka
 ├── SwingNotesMenuBar.java     # Pasek menu
 ├── SwingNotesContextMenu.java # Menu kontekstowe
 └── FindReplaceDialog.java     # Okno znajdź i zamień

@@ -6,7 +6,7 @@ import javax.swing.event.DocumentListener;
 import java.awt.*;
 
 public class FindReplaceDialog extends JDialog {
-    public FindReplaceDialog(JFrame window, RSyntaxTextArea textArea, FileManager fileManager) {
+    public FindReplaceDialog(JFrame window, RSyntaxTextArea textArea, FileManager fileManager, Tab activeTab) {
         super(window, "Znajdź i zamień", false);
 
         JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
@@ -15,7 +15,7 @@ public class FindReplaceDialog extends JDialog {
         JTextField txtReplace = new JTextField();
 
         txtFind.getDocument().addDocumentListener(new DocumentListener() {
-            private void reset() { fileManager.resetSearchPosition(); }
+            private void reset() { activeTab.resetSearchPosition(); }
             public void insertUpdate(DocumentEvent e) { reset(); }
             public void removeUpdate(DocumentEvent e) { reset(); }
             public void changedUpdate(DocumentEvent e) { reset(); }
@@ -28,7 +28,7 @@ public class FindReplaceDialog extends JDialog {
         JButton btnReplace = new JButton("Zamień");
         JButton btnReplaceAll = new JButton("Zamień wszystko");
 
-        btnFind.addActionListener(event -> fileManager.find(textArea, txtFind.getText()));
+        btnFind.addActionListener(event -> fileManager.find(textArea, txtFind.getText(), activeTab.getPreviousSearchPosition(), activeTab));
 
         btnReplace.addActionListener(event -> fileManager.replace(textArea, txtReplace.getText()));
 

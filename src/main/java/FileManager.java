@@ -11,24 +11,20 @@ import java.util.List;
 import java.util.prefs.Preferences;
 
 public class FileManager {
-    private File currentFile = null;
-    private boolean isFileChanged = false;
     private final JFrame window;
-    @SuppressWarnings("FieldMayBeFinal")
-    private int[] previousSearchPosition = {0}; //trick, bo Java wymaga, żeby zmienne w anonimowych klasach się nie zmieniały
 
     public FileManager(JFrame window) {
         this.window = window;
     }
 
-    public void openFile(RSyntaxTextArea textArea, String path, Preferences prefs) {
+    public void openFile(Tab activeTab, String path, Preferences prefs) {
         if (path == null) {
             JFileChooser chooser = new JFileChooser();
             if (chooser.showOpenDialog(window) == JFileChooser.APPROVE_OPTION) {
-                currentFile = chooser.getSelectedFile();
+                activeTab.setFile(chooser.getSelectedFile());
                 try {
-                    loadFile(textArea);
-                    addFileToRecents(prefs, currentFile.getAbsolutePath());
+                    loadFile(activeTab);
+                    addFileToRecents(prefs, activeTab.getFile().getAbsolutePath());
                 } catch (IOException ex) {
                     JOptionPane.showMessageDialog(window,
                             "Błąd odczytu pliku: " + ex.getMessage(),
@@ -36,9 +32,9 @@ public class FileManager {
                 }
             }
         } else {
-            currentFile = new File(path);
+            activeTab.setFile(new File(path));
             try {
-                loadFile(textArea);
+                loadFile(activeTab);
                 addFileToRecents(prefs, path);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(window,
@@ -62,77 +58,85 @@ public class FileManager {
         recentFilesList.addFirst(path);
 
         int maxLength = Integer.parseInt(prefs.get("recentFilesMenuLength", "5"));
-        if(recentFilesList.size() > maxLength) {
+        if (recentFilesList.size() > maxLength) {
             recentFilesList = new ArrayList<>(recentFilesList.subList(0, maxLength));
         }
 
         prefs.put("recentFiles", String.join(",", recentFilesList));
     }
 
-    private void loadFile(RSyntaxTextArea textArea) throws IOException {
+    private void loadFile(Tab activeTab) throws IOException {
+        File currentFile = activeTab.getFile();
+        RSyntaxTextArea textArea = activeTab.getTextArea();
+
         String fileContent = new String(Files.readAllBytes(currentFile.toPath()));
         textArea.setText(fileContent);
         textArea.setSyntaxEditingStyle(FileManager.getSyntaxStyle(currentFile.getName()));
-        setFileChanged(false);
+        activeTab.setFileChanged(false);
         window.setTitle("SwingNotes - " + currentFile.getName());
+        Main.updateActiveTabTitle();
     }
 
-    public void saveFile(RSyntaxTextArea textArea) {
-        if(currentFile == null) {
-            saveAs(textArea);
+    public void saveFile(Tab activeTab) {
+        File currentFile = activeTab.getFile();
+
+        if (currentFile == null) {
+            saveAs(activeTab);
         } else {
             try {
-                Files.write(currentFile.toPath(), textArea.getText().getBytes());
-                setFileChanged(false);
+                Files.write(currentFile.toPath(), activeTab.getTextArea().getText().getBytes());
+                activeTab.setFileChanged(false);
                 window.setTitle("SwingNotes - " + currentFile.getName());
+                Main.updateActiveTabTitle();
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(window,
-                        "Błąd zapisu pliku" + ex.getMessage(),
+                        "Błąd zapisu pliku: " + ex.getMessage(),
                         "Błąd", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    public void saveAs(RSyntaxTextArea textArea) {
+    public void saveAs(Tab activeTab) {
         JFileChooser chooser = new JFileChooser();
         chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                 "Text files (*.txt)", "txt"));
-        if(chooser.showSaveDialog(window) == JFileChooser.APPROVE_OPTION) {
-            currentFile = chooser.getSelectedFile();
-            if(!currentFile.getName().contains(".")) {
-                currentFile = new File(currentFile.getAbsolutePath() + ".txt");
+        if (chooser.showSaveDialog(window) == JFileChooser.APPROVE_OPTION) {
+            File newFile = chooser.getSelectedFile();
+            if (!newFile.getName().contains(".")) {
+                newFile = new File(newFile.getAbsolutePath() + ".txt");
             }
-            saveFile(textArea);
+            activeTab.setFile(newFile);
+            saveFile(activeTab);
         }
     }
 
-    public void newFile(RSyntaxTextArea textArea) {
-        if(!textArea.getText().isEmpty()) {
+    public void newFile(Tab activeTab) {
+        if (!activeTab.getTextArea().getText().isEmpty()) {
             int choice = JOptionPane.showOptionDialog(window,
                     "Czy zapisać zmiany przed utworzeniem nowego pliku?",
                     "Nowy plik", JOptionPane.YES_NO_CANCEL_OPTION,
                     JOptionPane.QUESTION_MESSAGE, null,
                     new String[]{"Zapisz", "Nie zapisuj", "Anuluj"}, 0);
-            if (choice == JOptionPane.YES_OPTION) saveFile(textArea);
+            if (choice == JOptionPane.YES_OPTION) saveFile(activeTab);
             else if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) return;
         }
-        textArea.setText("");
-        currentFile = null;
-        isFileChanged = false;
+        activeTab.getTextArea().setText("");
+        activeTab.setFile(null);
+        activeTab.setFileChanged(false);
         window.setTitle("SwingNotes - Nowy plik");
+        Main.updateActiveTabTitle();
     }
 
 
     // -=- wyszukiwanie i zamienianie -=-
-    public void find(RSyntaxTextArea textArea, String searchValue) {
+    public void find(RSyntaxTextArea textArea, String searchValue, int[] previousSearchPosition, Tab activeTab) {
         String text = textArea.getText();
         int cursorPosition = text.indexOf(searchValue, previousSearchPosition[0]); //zwraca -1, jeśli nie znaleziono
         if (cursorPosition != -1) {
             textArea.select(cursorPosition, cursorPosition + searchValue.length()); //zaznaczenie szukanego wyrażenia
             previousSearchPosition[0] = cursorPosition + 1;
-        }
-        else {
-            resetSearchPosition();
+        } else {
+            activeTab.resetSearchPosition();
             cursorPosition = text.indexOf(searchValue);
             if (cursorPosition != -1) {
                 textArea.select(cursorPosition, cursorPosition + searchValue.length());
@@ -182,17 +186,5 @@ public class FileManager {
             case "perl"         -> SyntaxConstants.SYNTAX_STYLE_PERL;
             default             -> SyntaxConstants.SYNTAX_STYLE_NONE;
         };
-    }
-
-    public boolean isFileChanged() {
-        return isFileChanged;
-    }
-
-    public void setFileChanged(boolean fileChanged) {
-        isFileChanged = fileChanged;
-    }
-
-    public void resetSearchPosition() {
-        previousSearchPosition[0] = 0;
     }
 }
