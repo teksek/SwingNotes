@@ -14,7 +14,7 @@ Prosty notatnik desktopowy napisany w Javie z użyciem biblioteki Swing.
 - Zmiana czcionki i rozmiaru
 - Włączanie/wyłączanie zawijania linii
 - Motywy UI: jasny, ciemny, systemowy (FlatLaf)
-- Podświetlanie składni na podstawie rozszerzenia pliku (RSyntaxTextArea)
+- Podświetlanie składni na podstawie rozszerzenia pliku (RSyntaxTextArea) i możliwość ręcznego ustawienia
 - Motywy składni: dark, monokai, eclipse, idea, vs i inne
 - Autouzupełnianie dla obsługiwanych języków (RSTALanguageSupport)
 - Numerowanie linii (RTextScrollPane)
@@ -27,12 +27,16 @@ Prosty notatnik desktopowy napisany w Javie z użyciem biblioteki Swing.
 - Zapamiętywanie preferencji użytkownika (czcionka, zawijanie linii, motywy)
 - Drukowanie zawartości
 - Ostatnio otwierane pliki w menu Plik z możliwością ustawienia liczby pozycji i ich wyczyszczenia
+- Wielojęzyczność (i18n): Interfejs w językach PL, EN, DE, ES, FR (automatyczne wykrywanie i ręczna zmiana)
+- Gwiazdka (*) na zakładce informująca o niezapisanych zmianach w pliku
 
 ## Technologie
 
 - Java SE — język i środowisko uruchomieniowe
 - Swing (`javax.swing`) — biblioteka GUI
 - NIO (`java.nio.file`) — operacje na plikach
+- Preferences (`java.util.prefs.Preferences`) - trwałe zapisywanie ustawień użytkownika
+- ResourceBundle (`java.util.ResourceBundle`) — obsługa internacjonalizacji (i18n)
 - [FlatLaf 3.7.1](https://github.com/JFormDesigner/FlatLaf) — nowoczesne motywy UI
 - [jSystemThemeDetector 3.8](https://github.com/Dansoftowner/jSystemThemeDetector) — wykrywanie motywu systemowego
 - [FontChooser 3.1.0](https://github.com/dheid/fontchooser) — okno wyboru czcionki
@@ -58,6 +62,7 @@ src/main/java/
 ├── Tab.java                   # Zakładka
 ├── SwingNotesMenuBar.java     # Pasek menu
 ├── SwingNotesContextMenu.java # Menu kontekstowe
+├── I18n.java                  # Zarządzanie tłumaczeniami i lokalizacją
 └── FindReplaceDialog.java     # Okno znajdź i zamień
 ```
 
@@ -65,6 +70,9 @@ src/main/java/
 
 Projekt edukacyjny stworzony w ramach nauki programowania w technikum. Rozbudowana wersja ćwiczenia z zajęć — dodane m.in. rzeczywisty I/O plików, podświetlanie składni, obsługa preferencji, motywy UI, drag-and-drop, ostatnio otwierane pliki, drukowanie i wiele innych funkcji.
 
-## Planowane funkcje (v1.4)
-- Możliwość zmiany kolejności zakładek (drag-and-drop na pasku zakładek)
-- Dodanie angielskiej wersji językowej i automatycznego ustalania języka na podstawie języka systemowego (i18n)
+## Planowane funkcje (v1.x)
+- Przywracanie otwartych plików oraz pozycji kursora po ponownym uruchomieniu aplikacji.
+- Funkcja Auto-save (konfigurowalny interwał czasowy lub zapis przy utracie fokusu).
+- Szukanie frazy we wszystkich otwartych dokumentach jednocześnie.
+- Mini-mapa kodu oraz statystyki czasu pracy nad danym plikiem.
+- Możliwość zmiany kolejności kart metodą drag-and-drop.
