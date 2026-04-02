@@ -11,6 +11,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.prefs.Preferences;
 
@@ -27,13 +28,19 @@ public class Main {
 
         window.setIconImage(new ImageIcon(Objects.requireNonNull(Main.class.getResource("/icon.png"))).getImage()); //ustawienie ikony programu
 
+        // lokalizacja
+        String savedLang = prefs.get("language", "system");
+        if (savedLang.equals("system")) I18n.loadBundle(Locale.getDefault());
+        else I18n.loadBundle(Locale.forLanguageTag(savedLang));
+
         fileManager = new FileManager(window);
 
 	    // pasek statusu dokumentu na dole
-        statusBar = new JLabel("Znaki: 0 | Słowa: 0 | Linie: 1");
+        statusBar = new JLabel(I18n.get("statusBar.format", 0, 0, 1));
         statusBar.setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 6));
 
         tabbedPane = new JTabbedPane();
+        tabbedPane.addChangeListener(e -> updateActiveTabUI());
 
         // implementacja mechanizmu drag-and-drop
         TransferHandler dropHandler = new TransferHandler() { // implementacja mechanizmu drag-and-drop
@@ -92,10 +99,19 @@ public class Main {
         return (Tab) tabbedPane.getSelectedComponent();
     }
 
-    public static void updateActiveTabTitle() {
+    public static void updateActiveTabUI() {
         int index = tabbedPane.getSelectedIndex();
         if (index >= 0) {
             tabbedPane.setTitleAt(index, getActiveTab().getTitle());
+            window.setTitle("SwingNotes - " + getActiveTab().getTitle());
+
+            // aktualizacja statusBaru przy zmianie zakładki
+            int chars = getActiveTab().getCharsCount();
+            int words = getActiveTab().getWordCount();
+            int lines = getActiveTab().getLinesCount();
+            statusBar.setText(I18n.get("statusBar.format", chars, words, lines));
+        } else {
+            window.setTitle("SwingNotes");
         }
     }
 
@@ -105,10 +121,10 @@ public class Main {
             if (tab.isFileChanged()) {
                 tabbedPane.setSelectedIndex(i);
                 int choice = JOptionPane.showOptionDialog(window,
-                        "Czy zapisać zmiany w \"" + tab.getTitle() + "\" przed zamknięciem?",
-                        "Zamykanie", JOptionPane.YES_NO_CANCEL_OPTION,
-                        JOptionPane.QUESTION_MESSAGE, null,
-                        new String[]{"Zapisz", "Nie zapisuj", "Anuluj"}, 0);
+                        I18n.get("dialog.saveChangesBeforeClosing.msg", tab.getTitle()),
+                        I18n.get("dialog.saveChangesBeforeClosing.app.title"),
+                        JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                        new String[]{I18n.get("msg.option.save"), I18n.get("msg.option.dontSave"), I18n.get("msg.option.cancel")}, 0);
                 if (choice == 0) fileManager.saveFile(tab);
                 else if (choice == 2 || choice == JOptionPane.CLOSED_OPTION) return;
             }

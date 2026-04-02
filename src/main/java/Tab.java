@@ -7,11 +7,13 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.HyperlinkEvent;
 import java.awt.*;
+import java.awt.dnd.*;
 import java.awt.datatransfer.DataFlavor;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.prefs.Preferences;
+import java.util.List;
 
 public class Tab extends JPanel {
     private final RSyntaxTextArea textArea;
@@ -45,11 +47,16 @@ public class Tab extends JPanel {
         // aktualizacja paska statusu przy każdej zmianie tekstu
         textArea.getDocument().addDocumentListener(new DocumentListener() {
             private void updateStatusBarOnChange() {
-                int charsCount = textArea.getText().length();
-                int linesCount = textArea.getLineCount();
-                int wordCount = textArea.getText().isBlank() ? 0 : textArea.getText().split("\\s+").length;
-                statusBar.setText("Znaki: " + charsCount + " | Słowa: " + wordCount + " | Linie: " + linesCount);
+                int charsCount = Tab.this.getCharsCount();
+                int linesCount = Tab.this.getLinesCount();
+                int wordCount = Tab.this.getWordCount();
+                statusBar.setText(I18n.get("statusBar.format", charsCount, wordCount, linesCount));
                 Tab.this.fileChanged = charsCount != 0;
+
+                int index = Main.tabbedPane.indexOfComponent(Tab.this);
+                if (index != -1) {
+                    Main.tabbedPane.setTitleAt(index, Tab.this.getTitle());
+                }
             }
 
             public void insertUpdate(DocumentEvent e) { updateStatusBarOnChange(); }
@@ -81,40 +88,34 @@ public class Tab extends JPanel {
             }
         });
 
-        TransferHandler originalHandler = textArea.getTransferHandler();
-
-        TransferHandler transferHandler = new TransferHandler() { // implementacja mechanizmu drag-and-drop plików ORAZ tekstu na poszczególną zakładkę (textArea)
+        new DropTarget(textArea, new DropTargetAdapter() { // implementacja mechanizmu drag-and-drop plików
             @Override
-            public boolean canImport(TransferSupport support) {
-                return support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)
-                        || support.isDataFlavorSupported(DataFlavor.stringFlavor);
-            }
+            public void drop(DropTargetDropEvent dtde) {
+                try {
+                    if (dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                        dtde.acceptDrop(DnDConstants.ACTION_COPY);
 
-            @SuppressWarnings("unchecked")
-            @Override
-            public boolean importData(TransferSupport support) {
-                if (support.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                    try {
-                        java.util.List<File> files = (java.util.List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
-                        if (!files.isEmpty()) {
-                            fileManager.openFile(Tab.this, files.getFirst().getAbsolutePath(), prefs);
+                        @SuppressWarnings("unchecked")
+                        List<File> droppedFiles = (List<File>) dtde.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+
+                        if (!droppedFiles.isEmpty()) {
+                            fileManager.openFile(Tab.this, droppedFiles.getFirst().getAbsolutePath(), prefs);
                         }
-                        return true;
-                    } catch (Exception e) {
-                        return false;
+                        dtde.dropComplete(true);
+                    } else {
+                        dtde.rejectDrop();
                     }
+                } catch (Exception e) {
+                    dtde.rejectDrop();
                 }
-                return originalHandler.importData(support);
             }
-        };
-
-        textArea.setTransferHandler(transferHandler);
+        });
     }
 
     public String getTitle() {
-        return file != null ? file.getName() : "Nowy plik"; //jeśli file != null jest prawdą, to zwraca file.getName() a jeśli fałszem, to zwraca "Nowy plik"
+        String name = file != null ? file.getName() : I18n.get("file.newFile"); //jeśli file != null jest prawdą, to zwraca file.getName() a jeśli fałszem, to zwraca "Nowy plik"
+        return fileChanged ? "*" + name : name;
     }
-
     public RSyntaxTextArea getTextArea() { return textArea; }
     public File getFile() { return file; }
     public boolean isFileChanged() { return fileChanged; }
@@ -122,4 +123,7 @@ public class Tab extends JPanel {
     public void setFileChanged(boolean changed) { this.fileChanged = changed; }
     public int[] getPreviousSearchPosition() { return previousSearchPosition; }
     public void resetSearchPosition() { previousSearchPosition[0] = 0; }
+    public int getCharsCount() { return textArea.getText().length(); }
+    public int getLinesCount() { return textArea.getLineCount(); }
+    public int getWordCount() { return textArea.getText().isBlank() ? 0 : textArea.getText().split("\\s+").length; }
 }

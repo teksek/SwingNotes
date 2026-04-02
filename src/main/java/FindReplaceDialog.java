@@ -7,7 +7,7 @@ import java.awt.*;
 
 public class FindReplaceDialog extends JDialog {
     public FindReplaceDialog(JFrame window, RSyntaxTextArea textArea, FileManager fileManager, Tab activeTab) {
-        super(window, "Znajdź i zamień", false);
+        super(window, I18n.get("dialog.findAndReplace.title"), false);
 
         JPanel panel = new JPanel(new GridLayout(3, 2, 5, 5));
 
@@ -24,9 +24,9 @@ public class FindReplaceDialog extends JDialog {
         txtFind.setPreferredSize(new Dimension(150, 25));
         txtReplace.setPreferredSize(new Dimension(150, 25));
 
-        JButton btnFind = new JButton("Szukaj");
-        JButton btnReplace = new JButton("Zamień");
-        JButton btnReplaceAll = new JButton("Zamień wszystko");
+        JButton btnFind = new JButton(I18n.get("dialog.findAndReplace.button.find"));
+        JButton btnReplace = new JButton(I18n.get("dialog.findAndReplace.button.replace"));
+        JButton btnReplaceAll = new JButton(I18n.get("dialog.findAndReplace.button.replaceAll"));
 
         btnFind.addActionListener(event -> fileManager.find(textArea, txtFind.getText(), activeTab.getPreviousSearchPosition(), activeTab));
 
@@ -34,9 +34,9 @@ public class FindReplaceDialog extends JDialog {
 
         btnReplaceAll.addActionListener(event -> fileManager.replaceAll(textArea, txtFind.getText(), txtReplace.getText()));
 
-        panel.add(new JLabel("Szukaj:"));
+        panel.add(new JLabel(I18n.get("dialog.findAndReplace.label.find")));
         panel.add(txtFind);
-        panel.add(new JLabel("Zamień na:"));
+        panel.add(new JLabel(I18n.get("dialog.findAndReplace.label.replace")));
         panel.add(txtReplace);
         panel.add(btnFind);
         panel.add(btnReplace);

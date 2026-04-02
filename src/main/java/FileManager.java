@@ -27,8 +27,8 @@ public class FileManager {
                     addFileToRecents(prefs, activeTab.getFile().getAbsolutePath());
                 } catch (IOException ex) {
                     JOptionPane.showMessageDialog(window,
-                            "Błąd odczytu pliku: " + ex.getMessage(),
-                            "Błąd", JOptionPane.ERROR_MESSAGE);
+                            I18n.get("dialog.readError.msg", ex.getMessage()),
+                            I18n.get("msg.error"), JOptionPane.ERROR_MESSAGE);
                 }
             }
         } else {
@@ -38,8 +38,8 @@ public class FileManager {
                 addFileToRecents(prefs, path);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(window,
-                        "Błąd odczytu pliku: " + ex.getMessage(),
-                        "Błąd", JOptionPane.ERROR_MESSAGE);
+                        I18n.get("dialog.readError.msg", ex.getMessage()),
+                        I18n.get("msg.error"), JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -74,7 +74,7 @@ public class FileManager {
         textArea.setSyntaxEditingStyle(FileManager.getSyntaxStyle(currentFile.getName()));
         activeTab.setFileChanged(false);
         window.setTitle("SwingNotes - " + currentFile.getName());
-        Main.updateActiveTabTitle();
+        Main.updateActiveTabUI();
     }
 
     public void saveFile(Tab activeTab) {
@@ -87,11 +87,11 @@ public class FileManager {
                 Files.write(currentFile.toPath(), activeTab.getTextArea().getText().getBytes());
                 activeTab.setFileChanged(false);
                 window.setTitle("SwingNotes - " + currentFile.getName());
-                Main.updateActiveTabTitle();
+                Main.updateActiveTabUI();
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(window,
-                        "Błąd zapisu pliku: " + ex.getMessage(),
-                        "Błąd", JOptionPane.ERROR_MESSAGE);
+                        I18n.get("dialog.saveError.msg", ex.getMessage()),
+                        I18n.get("msg.error"), JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -113,18 +113,18 @@ public class FileManager {
     public void newFile(Tab activeTab) {
         if (!activeTab.getTextArea().getText().isEmpty()) {
             int choice = JOptionPane.showOptionDialog(window,
-                    "Czy zapisać zmiany przed utworzeniem nowego pliku?",
-                    "Nowy plik", JOptionPane.YES_NO_CANCEL_OPTION,
+                    I18n.get("dialog.saveChangesBeforeCreatingNewFile.msg"),
+                    I18n.get("file.newFile"), JOptionPane.YES_NO_CANCEL_OPTION,
                     JOptionPane.QUESTION_MESSAGE, null,
-                    new String[]{"Zapisz", "Nie zapisuj", "Anuluj"}, 0);
+                    new String[]{I18n.get("msg.option.save"), I18n.get("msg.option.dontSave"), I18n.get("msg.option.cancel")}, 0);
             if (choice == JOptionPane.YES_OPTION) saveFile(activeTab);
             else if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) return;
         }
         activeTab.getTextArea().setText("");
         activeTab.setFile(null);
         activeTab.setFileChanged(false);
-        window.setTitle("SwingNotes - Nowy plik");
-        Main.updateActiveTabTitle();
+        window.setTitle("SwingNotes - " + I18n.get("file.newFile"));
+        Main.updateActiveTabUI();
     }
 
 
