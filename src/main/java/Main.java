@@ -7,13 +7,13 @@ import org.fife.ui.rsyntaxtextarea.Theme;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.prefs.Preferences;
+import java.util.List;
 
 public class Main {
     private static JFrame window;
@@ -21,28 +21,86 @@ public class Main {
     public static JTabbedPane tabbedPane;
     private static JLabel statusBar;
     private static FileManager fileManager;
+    private static Timer autoSaveTimer;
+    private static WindowFocusListener autoSaveFocusListener = null;
 
     private static void makeWindow() {
+        // -=- podstawowa inicjalizacja programu -=-
+        setupBasicWindow();
+        initLocalization();
+        fileManager = new FileManager(window);
+
+        // -=- komponenty UI -=-
+        setupStatusBar();
+        setupTabbedPane();
+
+        // -=- konfiguracja okna -=-
+        window.setJMenuBar(new SwingNotesMenuBar(fileManager, prefs, window));     // tworzenie okna z elementów
+        setupWindowListeners();
+
+        // -=- start aplikacji -=-
+        addNewTab(); // pierwsza zakładka
+        activateAutosave();
+        finalizeWindowSetup();
+    }
+
+    private static void setupBasicWindow() {
         window = new JFrame("SwingNotes");
         window.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-
         window.setIconImage(new ImageIcon(Objects.requireNonNull(Main.class.getResource("/icon.png"))).getImage()); //ustawienie ikony programu
+    }
 
-        // lokalizacja
+    private static void initLocalization() {
         String savedLang = prefs.get("language", "system");
         if (savedLang.equals("system")) I18n.loadBundle(Locale.getDefault());
         else I18n.loadBundle(Locale.forLanguageTag(savedLang));
+    }
 
-        fileManager = new FileManager(window);
-
-	    // pasek statusu dokumentu na dole
+    private static void setupStatusBar() {
         statusBar = new JLabel(I18n.get("statusBar.format", 0, 0, 1));
         statusBar.setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 6));
+    }
 
+    private static void setupTabbedPane() {
         tabbedPane = new JTabbedPane();
         tabbedPane.addChangeListener(e -> updateActiveTabUI());
 
-        // implementacja mechanizmu drag-and-drop
+        setupTabReordering();
+        setupDragAndDrop();
+    }
+
+    private static void setupTabReordering() {
+        final int[] dragTabIndex = {-1}; //ustawienie indexu niemożliwego
+        tabbedPane.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent cursorLocation) {
+                // gdy kliknięto zakładkę pobierany jest na podstawie lokalizacji kursora myszy index przenoszonej zakładki
+                dragTabIndex[0] = tabbedPane.indexAtLocation(cursorLocation.getX(), cursorLocation.getY());
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) { //zakończenie przenoszenia zakładki
+                dragTabIndex[0] = -1; //ponowne ustawienie niemożliwego indexu zapobiegającego bugom
+                tabbedPane.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR)); //przywrócenie defaultowego kursora po upuszczeniu zakładki
+            }
+        });
+
+        tabbedPane.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                if (dragTabIndex[0] != -1) { // jeśli mysz jest ustawiona na jakiejkolwiek zakładce
+                    int currentTargetIndex = tabbedPane.indexAtLocation(e.getX(), e.getY()); // ustawienie docelowej pozycji zakładki
+                    if (currentTargetIndex != -1 && currentTargetIndex != dragTabIndex[0]) { //jeśli kursor jest nad inną zakładką
+                        reorderTab(dragTabIndex[0], currentTargetIndex); //zamiana zakładek miejscem w locie (żeby użytkownik widział, co się dzieje, a nie dopiero po upuszczeniu)
+                        dragTabIndex[0] = currentTargetIndex; //zmiana indeksu ciągniętej zakładki
+                    }
+                    tabbedPane.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); //ustawienie kursora na wskazującego
+                }
+            }
+        });
+    }
+
+    private static void setupDragAndDrop() {
         TransferHandler dropHandler = new TransferHandler() { // implementacja mechanizmu drag-and-drop
             @Override
             public boolean canImport(TransferSupport support) {
@@ -53,7 +111,7 @@ public class Main {
             @Override
             public boolean importData(TransferSupport support) {
                 try {
-                    java.util.List<File> files = (java.util.List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+                    List<File> files = (List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
                     if (!files.isEmpty()) {
                         fileManager.openFile(getActiveTab(), files.getFirst().getAbsolutePath(), prefs);
                     }
@@ -63,21 +121,19 @@ public class Main {
                 }
             }
         };
-
         tabbedPane.setTransferHandler(dropHandler);     // dodanie obsługi mechanizmu drag-and-drop plików na header (tam, gdzie zakładki i menu)
+    }
 
-        addNewTab(); // pierwsza zakładka
-
-        window.setJMenuBar(new SwingNotesMenuBar(fileManager, prefs, window));     // tworzenie okna z elementów
-
+    private static void setupWindowListeners() {
         window.addWindowListener(new WindowAdapter() { // dodanie obsługi wyłączenia programu
             @Override
             public void windowClosing(WindowEvent e) {
                 closeApp();
             }
         });
+    }
 
-	    // tworzenie okna z elementów
+    private static void finalizeWindowSetup() {
         window.add(tabbedPane, BorderLayout.CENTER);
         window.add(statusBar, BorderLayout.SOUTH);
 
@@ -86,6 +142,46 @@ public class Main {
         window.setSize(new Dimension(800, 600));
         window.setLocationRelativeTo(null);
         window.setVisible(true);
+    }
+
+    public static void activateAutosave() {
+        if (autoSaveTimer != null) autoSaveTimer.stop(); autoSaveTimer = null; //zabijamy stary timer, jeśli jakiś działał
+        if (autoSaveFocusListener != null) window.removeWindowFocusListener(autoSaveFocusListener); autoSaveFocusListener = null; //czyścimy stary listener, jeśli był
+        String trigger = prefs.get("autosave-trigger", "never");
+        if (trigger.equals("never")) return; //użytkownik nie zgodził się na autosave
+        else if (trigger.equals("onFocusChange")) { //użytkownik wybrał autosave po utracie fokusu
+            autoSaveFocusListener = new WindowAdapter() {
+                @Override
+                public void windowLostFocus(WindowEvent e) {
+                    saveAllModifiedFiles();
+                }
+            };
+            window.addWindowFocusListener(autoSaveFocusListener);
+        } else {  //to znaczy, że użytkownik wybrał autosave po upływie danej ilości minut
+            int delayValue = Integer.parseInt(trigger);
+            autoSaveTimer = new Timer(delayValue * 60 * 1000, e -> saveAllModifiedFiles());
+            autoSaveTimer.start();
+        }
+    }
+
+    private static void saveAllModifiedFiles() {
+        for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+            Tab tab = (Tab) tabbedPane.getComponentAt(i);
+            if (tab.isFileChanged() && tab.getFile() != null) {
+                fileManager.saveFile(tab);
+            }
+        }
+    }
+
+    private static void reorderTab(int indexFrom, int indexTo) {
+        Component component = tabbedPane.getComponentAt(indexFrom);   //skopiowanie treści (wnętrza) zakładki
+        String title = tabbedPane.getTitleAt(indexFrom);              //skopiowanie tytułu zakładki
+        Component tabComp = tabbedPane.getTabComponentAt(indexFrom);  //skopiowanie tytułu zakładki
+
+        tabbedPane.remove(indexFrom); //usunięcie zakładki z wcześniejszego miejsca
+        tabbedPane.insertTab(title, null, component, null, indexTo);  //wstawienie całej wcześniej skopiowanej zakładki w nowe miejsce
+        tabbedPane.setTabComponentAt(indexTo, tabComp); //przywrócenie tytułu zakładki
+        tabbedPane.setSelectedIndex(indexTo);           //utrzymanie zaznaczenia na przenoszonej zakładce
     }
 
     public static void addNewTab() {
@@ -118,16 +214,8 @@ public class Main {
     public static void closeApp() {
         for (int i = 0; i < tabbedPane.getTabCount(); i++) {
             Tab tab = (Tab) tabbedPane.getComponentAt(i);
-            if (tab.isFileChanged()) {
-                tabbedPane.setSelectedIndex(i);
-                int choice = JOptionPane.showOptionDialog(window,
-                        I18n.get("dialog.saveChangesBeforeClosing.msg", tab.getTitle()),
-                        I18n.get("dialog.saveChangesBeforeClosing.app.title"),
-                        JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null,
-                        new String[]{I18n.get("msg.option.save"), I18n.get("msg.option.dontSave"), I18n.get("msg.option.cancel")}, 0);
-                if (choice == 0) fileManager.saveFile(tab);
-                else if (choice == 2 || choice == JOptionPane.CLOSED_OPTION) return;
-            }
+            tabbedPane.setSelectedIndex(i); //pokazuje zakładkę, aby użytkownik wiedział, o który plik jest pytany
+            if (!fileManager.canDiscardChanges(tab, "dialog.saveChangesBeforeClosing.msg")) return;
         }
         System.exit(0);
     }

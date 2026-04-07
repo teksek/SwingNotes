@@ -18,6 +18,7 @@ public class FileManager {
     }
 
     public void openFile(Tab activeTab, String path, Preferences prefs) {
+        if (!canDiscardChanges(activeTab, "dialog.discardChanges.msg")) return;
         if (path == null) {
             JFileChooser chooser = new JFileChooser();
             if (chooser.showOpenDialog(window) == JFileChooser.APPROVE_OPTION) {
@@ -68,11 +69,12 @@ public class FileManager {
     private void loadFile(Tab activeTab) throws IOException {
         File currentFile = activeTab.getFile();
         RSyntaxTextArea textArea = activeTab.getTextArea();
-
         String fileContent = new String(Files.readAllBytes(currentFile.toPath()));
         textArea.setText(fileContent);
         textArea.setSyntaxEditingStyle(FileManager.getSyntaxStyle(currentFile.getName()));
         activeTab.setFileChanged(false);
+        activeTab.setLastSavedContent(activeTab.getTextArea().getText());
+
         window.setTitle("SwingNotes - " + currentFile.getName());
         Main.updateActiveTabUI();
     }
@@ -86,6 +88,7 @@ public class FileManager {
             try {
                 Files.write(currentFile.toPath(), activeTab.getTextArea().getText().getBytes());
                 activeTab.setFileChanged(false);
+                activeTab.setLastSavedContent(activeTab.getTextArea().getText());
                 window.setTitle("SwingNotes - " + currentFile.getName());
                 Main.updateActiveTabUI();
             } catch (IOException ex) {
@@ -111,15 +114,8 @@ public class FileManager {
     }
 
     public void newFile(Tab activeTab) {
-        if (!activeTab.getTextArea().getText().isEmpty()) {
-            int choice = JOptionPane.showOptionDialog(window,
-                    I18n.get("dialog.saveChangesBeforeCreatingNewFile.msg"),
-                    I18n.get("file.newFile"), JOptionPane.YES_NO_CANCEL_OPTION,
-                    JOptionPane.QUESTION_MESSAGE, null,
-                    new String[]{I18n.get("msg.option.save"), I18n.get("msg.option.dontSave"), I18n.get("msg.option.cancel")}, 0);
-            if (choice == JOptionPane.YES_OPTION) saveFile(activeTab);
-            else if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) return;
-        }
+        if (!canDiscardChanges(activeTab, "dialog.saveChangesBeforeCreatingNewFile.msg")) return;
+        activeTab.setLastSavedContent("");
         activeTab.getTextArea().setText("");
         activeTab.setFile(null);
         activeTab.setFileChanged(false);
@@ -186,5 +182,27 @@ public class FileManager {
             case "perl"         -> SyntaxConstants.SYNTAX_STYLE_PERL;
             default             -> SyntaxConstants.SYNTAX_STYLE_NONE;
         };
+    }
+
+    public boolean canDiscardChanges(Tab activeTab, String messageKey) {
+        if (!activeTab.isFileChanged()) {
+            return true; // brak zmian, można porzucić zmiany
+        }
+
+        String fileName = activeTab.getTitle().replace("*", "");
+
+        int option = JOptionPane.showOptionDialog(window,
+                I18n.get(messageKey, fileName),
+                I18n.get("dialog.discardChanges.title"), JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null,
+                new String[]{I18n.get("msg.option.save"), I18n.get("msg.option.dontSave"), I18n.get("msg.option.cancel")}, 0);
+        if (option == JOptionPane.YES_OPTION) {
+            saveFile(activeTab);
+            return !activeTab.isFileChanged(); //jeśli zapisano pomyślnie można kontynuować
+        } else if (option == JOptionPane.NO_OPTION) {
+            return true; //porzucenie zmian
+        }
+
+        return false; //cancel lub zamknięcie okna - przerwanie wykonywanej operacji
     }
 }

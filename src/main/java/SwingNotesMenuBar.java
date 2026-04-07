@@ -167,6 +167,46 @@ public class SwingNotesMenuBar extends JMenuBar {
             }
         });
 
+        JMenu autoSaveSubMenu = new JMenu(I18n.get("file.autoSave"));
+
+        int[] timeValues = {5, 10, 15};
+        for(int timeValue : timeValues) {
+            JMenuItem timeValueItem = new JMenuItem(timeValue + " " + I18n.get("autoSave.minutes"));
+            timeValueItem.addActionListener(e -> {
+                prefs.put("autosave-trigger", String.valueOf(timeValue));
+                Main.activateAutosave();
+            });
+            autoSaveSubMenu.add(timeValueItem);
+        }
+
+        JMenuItem autoSaveSetTimeItem = new JMenuItem(I18n.get("autoSave.setCustomTime"));
+        autoSaveSetTimeItem.addActionListener(e -> {
+            String inputValue = JOptionPane.showInputDialog(window,
+                    I18n.get("dialog.autoSave.setCustomTime.msg"),
+                    prefs.get("autosave-trigger", "never"));
+            if(inputValue != null && inputValue.matches("\\d+")) { //czy to cyfry?
+                prefs.put("autosave-trigger", inputValue);
+                Main.activateAutosave();
+            }
+        });
+        autoSaveSubMenu.add(autoSaveSetTimeItem);
+
+        JMenuItem autoSaveOnFocusChangeItem = new JMenuItem(I18n.get("autoSave.onFocusLost"));
+        autoSaveOnFocusChangeItem.addActionListener(e -> {
+            prefs.put("autosave-trigger", "onFocusChange");
+            Main.activateAutosave();
+        });
+        autoSaveSubMenu.add(autoSaveOnFocusChangeItem);
+
+        JMenuItem autoSaveDisableItem = new JMenuItem(I18n.get("msg.disable"));
+        autoSaveDisableItem.addActionListener(e -> {
+            prefs.put("autosave-trigger", "never");
+            Main.activateAutosave();
+        });
+        autoSaveSubMenu.add(autoSaveDisableItem);
+
+
+
         JMenuItem quitItem = new JMenuItem(I18n.get("file.quit"), KeyEvent.VK_K);
         quitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, InputEvent.CTRL_DOWN_MASK));
         quitItem.addActionListener(e -> Main.closeApp());
@@ -180,6 +220,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         fileMenu.addSeparator();
         fileMenu.add(saveItem);
         fileMenu.add(saveAsItem);
+        fileMenu.add(autoSaveSubMenu);
         fileMenu.add(printItem);
         fileMenu.addSeparator();
         fileMenu.add(quitItem);
@@ -287,6 +328,21 @@ public class SwingNotesMenuBar extends JMenuBar {
             syntaxThemeSubMenu.add(syntaxThemeItem);
         }
 
+        JCheckBoxMenuItem errorStripItem = new JCheckBoxMenuItem(I18n.get("view.errorStrip"));
+        errorStripItem.setSelected(prefs.getBoolean("errorStrip", false));
+        errorStripItem.addActionListener(e -> {
+            boolean showErrorStrip = errorStripItem.isSelected();
+            prefs.putBoolean("errorStrip", showErrorStrip);
+            for (int i = 0; i < Main.tabbedPane.getTabCount(); i++) {
+                Component component = Main.tabbedPane.getComponentAt(i);
+                if (component instanceof Tab) {
+                    ((Tab) component).toggleErrorStrip(showErrorStrip);
+                }
+            }
+            tab().toggleErrorStrip(showErrorStrip);
+        });
+
+
         JCheckBoxMenuItem lineWrapItem = new JCheckBoxMenuItem(I18n.get("view.lineWrap"));
         lineWrapItem.setSelected(prefs.getBoolean("lineWrap", true));
         lineWrapItem.addActionListener(e -> {
@@ -315,6 +371,8 @@ public class SwingNotesMenuBar extends JMenuBar {
         themeSubMenu.add(whiteThemeItem);
         themeSubMenu.add(systemThemeItem);
         viewMenu.add(syntaxThemeSubMenu);
+        viewMenu.addSeparator();
+        viewMenu.add(errorStripItem);
         viewMenu.add(lineWrapItem);
         viewMenu.add(fontItem);
 

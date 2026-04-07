@@ -1,5 +1,6 @@
 import org.fife.rsta.ac.LanguageSupportFactory;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rsyntaxtextarea.ErrorStrip;
 import org.fife.ui.rtextarea.RTextScrollPane;
 
 import javax.swing.*;
@@ -19,8 +20,10 @@ public class Tab extends JPanel {
     private final RSyntaxTextArea textArea;
     private File file;
     private boolean fileChanged;
+    private ErrorStrip errorStrip;
     @SuppressWarnings("FieldMayBeFinal")
     private int[] previousSearchPosition = {0}; //trick, bo Java wymaga, żeby zmienne w anonimowych klasach się nie zmieniały
+    private String lastSavedContent = "";
 
     public Tab(FileManager fileManager, Preferences prefs, JLabel statusBar) {
         setLayout(new BorderLayout());
@@ -31,6 +34,8 @@ public class Tab extends JPanel {
         this.fileChanged = false;
 
         add(scrollPane, BorderLayout.CENTER); //zakładka jest JPanelem który zawiera scrollPane
+
+        toggleErrorStrip(prefs.getBoolean("errorStrip", false));
 
         LanguageSupportFactory.get().register(textArea);
 
@@ -51,11 +56,26 @@ public class Tab extends JPanel {
                 int linesCount = Tab.this.getLinesCount();
                 int wordCount = Tab.this.getWordCount();
                 statusBar.setText(I18n.get("statusBar.format", charsCount, wordCount, linesCount));
-                Tab.this.fileChanged = charsCount != 0;
+                checkChanges();
 
                 int index = Main.tabbedPane.indexOfComponent(Tab.this);
                 if (index != -1) {
                     Main.tabbedPane.setTitleAt(index, Tab.this.getTitle());
+                }
+            }
+
+            private void checkChanges() {
+                String currentText = textArea.getText();
+                boolean changed;
+
+                if (currentText.length() != lastSavedContent.length()) changed = true;
+                else changed = !currentText.equals(lastSavedContent);
+
+                if(changed != fileChanged) {
+                    setFileChanged(changed);
+                    int index = Main.tabbedPane.indexOfComponent(Tab.this);
+                    if(index != -1) Main.tabbedPane.setTitleAt(index, getTitle());
+                    Main.updateActiveTabUI();
                 }
             }
 
@@ -112,6 +132,17 @@ public class Tab extends JPanel {
         });
     }
 
+    public void toggleErrorStrip(boolean show) {
+        if(show) {
+            if(errorStrip == null) errorStrip = new ErrorStrip(textArea);
+            add(errorStrip, BorderLayout.LINE_END); //zaraz za scrollbarem
+        } else {
+            if (errorStrip != null) remove(errorStrip);
+        }
+        revalidate();
+        repaint();
+    }
+
     public String getTitle() {
         String name = file != null ? file.getName() : I18n.get("file.newFile"); //jeśli file != null jest prawdą, to zwraca file.getName() a jeśli fałszem, to zwraca "Nowy plik"
         return fileChanged ? "*" + name : name;
@@ -126,4 +157,5 @@ public class Tab extends JPanel {
     public int getCharsCount() { return textArea.getText().length(); }
     public int getLinesCount() { return textArea.getLineCount(); }
     public int getWordCount() { return textArea.getText().isBlank() ? 0 : textArea.getText().split("\\s+").length; }
+    public void setLastSavedContent(String savedContent) { this.lastSavedContent = savedContent; }
 }
