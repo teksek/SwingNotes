@@ -2,6 +2,7 @@ import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 
 import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,40 +13,28 @@ import java.util.prefs.Preferences;
 
 public class FileManager {
     private final JFrame window;
+    private final Preferences prefs;
 
-    public FileManager(JFrame window) {
+    public FileManager(JFrame window, Preferences prefs) {
         this.window = window;
+        this.prefs = prefs;
     }
 
-    public void openFile(Tab activeTab, String path, Preferences prefs) {
+    public void openFile(Tab activeTab, String path) {
         if (!canDiscardChanges(activeTab, "dialog.discardChanges.msg")) return;
         if (path == null) {
             JFileChooser chooser = new JFileChooser();
             if (chooser.showOpenDialog(window) == JFileChooser.APPROVE_OPTION) {
                 activeTab.setFile(chooser.getSelectedFile());
-                try {
-                    loadFile(activeTab);
-                    addFileToRecents(prefs, activeTab.getFile().getAbsolutePath());
-                } catch (IOException ex) {
-                    JOptionPane.showMessageDialog(window,
-                            I18n.get("dialog.readError.msg", ex.getMessage()),
-                            I18n.get("msg.error"), JOptionPane.ERROR_MESSAGE);
-                }
+                loadFile(activeTab);
             }
         } else {
             activeTab.setFile(new File(path));
-            try {
-                loadFile(activeTab);
-                addFileToRecents(prefs, path);
-            } catch (IOException ex) {
-                JOptionPane.showMessageDialog(window,
-                        I18n.get("dialog.readError.msg", ex.getMessage()),
-                        I18n.get("msg.error"), JOptionPane.ERROR_MESSAGE);
-            }
+            loadFile(activeTab);
         }
     }
 
-    private void addFileToRecents(Preferences prefs, String path) {
+    private void addFileToRecents(String path) {
         String recents = prefs.get("recentFiles", "none");
 
         List<String> recentFilesList;
@@ -66,17 +55,59 @@ public class FileManager {
         prefs.put("recentFiles", String.join(",", recentFilesList));
     }
 
-    private void loadFile(Tab activeTab) throws IOException {
-        File currentFile = activeTab.getFile();
-        RSyntaxTextArea textArea = activeTab.getTextArea();
-        String fileContent = new String(Files.readAllBytes(currentFile.toPath()));
-        textArea.setText(fileContent);
-        textArea.setSyntaxEditingStyle(FileManager.getSyntaxStyle(currentFile.getName()));
-        activeTab.setFileChanged(false);
-        activeTab.setLastSavedContent(activeTab.getTextArea().getText());
+    private void removeFileFromRecents(String path) {
+        String recents = prefs.get("recentFiles", "none");
+        if (recents.equals("none")) return;
 
-        window.setTitle("SwingNotes - " + currentFile.getName());
-        Main.updateActiveTabUI();
+        List<String> recentFilesList = new ArrayList<>(Arrays.asList(recents.split(",")));
+        recentFilesList.remove(path);
+
+        if (recentFilesList.isEmpty()) {
+            prefs.put("recentFiles", "none");
+        } else {
+            prefs.put("recentFiles", String.join(",", recentFilesList));
+        }
+    }
+
+    private void loadFile(Tab activeTab) {
+        File currentFile = activeTab.getFile();
+        if (currentFile == null) return;
+        if (!currentFile.exists() || !currentFile.isFile()) {
+            JOptionPane.showMessageDialog(window,
+                    I18n.get("dialog.readError.msg", currentFile.getAbsolutePath()),
+                    I18n.get("msg.error"), JOptionPane.ERROR_MESSAGE);
+            removeFileFromRecents(currentFile.getAbsolutePath());
+            return;
+        }
+
+        window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+        new SwingWorker<String, Void>() { //asynchroniczne wczytywanie pliku (osobny wątek, gdyby plik był duży to aplikacja się nie zfreezuje)
+            @Override
+            protected String doInBackground() throws Exception {
+                return Files.readString(currentFile.toPath());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String content = get();
+                    activeTab.getTextArea().setText(content);
+                    activeTab.setLastSavedContent(content);
+                    activeTab.setFileChanged(false);
+                    activeTab.getTextArea().setCaretPosition(0);
+                    activeTab.getTextArea().discardAllEdits(); // po wczytaniu tekstu gdyby tego nie było można byłoby to cofnąć poprzez ctrl + z, a to nie powinno tak działać
+                    activeTab.getTextArea().setSyntaxEditingStyle(FileManager.getSyntaxStyle(currentFile.getName()));
+                    addFileToRecents(currentFile.getAbsolutePath()); // dodajemy plik aktualnie wczytywany do ostatnio otwieranych
+                    window.setTitle("SwingNotes - " + currentFile.getName());
+                    Main.updateActiveTabUI();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(window, I18n.get("msg.error") + ": " + ex.getMessage());
+                } finally {
+                    window.setCursor(Cursor.getDefaultCursor());
+                }
+            }
+        }.execute();
     }
 
     public void saveFile(Tab activeTab) {
@@ -86,9 +117,9 @@ public class FileManager {
             saveAs(activeTab);
         } else {
             try {
-                Files.write(currentFile.toPath(), activeTab.getTextArea().getText().getBytes());
+                Files.write(currentFile.toPath(), activeTab.getText().getBytes());
                 activeTab.setFileChanged(false);
-                activeTab.setLastSavedContent(activeTab.getTextArea().getText());
+                activeTab.setLastSavedContent(activeTab.getText());
                 window.setTitle("SwingNotes - " + currentFile.getName());
                 Main.updateActiveTabUI();
             } catch (IOException ex) {
@@ -184,6 +215,7 @@ public class FileManager {
         };
     }
 
+    @SuppressWarnings({"BooleanMethodIsAlwaysInverted", "RedundantIfStatement"})
     public boolean canDiscardChanges(Tab activeTab, String messageKey) {
         if (!activeTab.isFileChanged()) {
             return true; // brak zmian, można porzucić zmiany

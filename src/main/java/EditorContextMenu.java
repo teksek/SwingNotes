@@ -4,8 +4,8 @@ import javax.swing.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
-public class SwingNotesContextMenu extends JPopupMenu {
-    public SwingNotesContextMenu(RSyntaxTextArea textArea) {
+public class EditorContextMenu extends JPopupMenu {
+    public EditorContextMenu(RSyntaxTextArea textArea) {
         // Nazwy zmiennych pozycji menu zawierają w sobie suffix: -Item (np. copyItem)
 
         JMenuItem copyItem = new JMenuItem(I18n.get("edit.copy"));

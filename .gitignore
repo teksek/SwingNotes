@@ -18,3 +18,5 @@ out/
 !**/src/test/**/out/
 
 TODO.txt
+/appimagetool-x86_64.AppImage
+/SwingNotes-x86_64.AppImage

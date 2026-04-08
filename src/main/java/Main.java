@@ -3,13 +3,18 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.jthemedetecor.OsThemeDetector;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.Theme;
+import org.commonmark.node.Node;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
 
 import javax.swing.*;
+import javax.swing.event.HyperlinkEvent;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.prefs.Preferences;
@@ -23,23 +28,28 @@ public class Main {
     private static FileManager fileManager;
     private static Timer autoSaveTimer;
     private static WindowFocusListener autoSaveFocusListener = null;
+    private static JSplitPane splitPane;
+    private static JEditorPane markdownPreview;
+    private static boolean isPreviewVisible = false;
+    public static JCheckBoxMenuItem mdPreviewItem;
 
     private static void makeWindow() {
         // -=- podstawowa inicjalizacja programu -=-
         setupBasicWindow();
         initLocalization();
-        fileManager = new FileManager(window);
+        fileManager = new FileManager(window, prefs);
 
         // -=- komponenty UI -=-
         setupStatusBar();
         setupTabbedPane();
 
         // -=- konfiguracja okna -=-
-        window.setJMenuBar(new SwingNotesMenuBar(fileManager, prefs, window));     // tworzenie okna z elementów
+        window.setJMenuBar(new AppMenuBar(fileManager, prefs, window));     // tworzenie okna z elementów
         setupWindowListeners();
 
         // -=- start aplikacji -=-
-        addNewTab(); // pierwsza zakładka
+        if(!prefs.getBoolean("restoreSession", false)) addNewTab(); // pierwsza zakładka, jeśli nie ma zapisywania sesji włączonego
+        else restoreSession();
         activateAutosave();
         finalizeWindowSetup();
     }
@@ -113,7 +123,7 @@ public class Main {
                 try {
                     List<File> files = (List<File>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
                     if (!files.isEmpty()) {
-                        fileManager.openFile(getActiveTab(), files.getFirst().getAbsolutePath(), prefs);
+                        fileManager.openFile(getActiveTab(), files.getFirst().getAbsolutePath());
                     }
                     return true;
                 } catch (Exception e) {
@@ -144,12 +154,56 @@ public class Main {
         window.setVisible(true);
     }
 
+    private static void restoreSession() {
+        String session = prefs.get("open-files-session", "");
+        if(!session.isEmpty()) {
+            String[] paths = session.split(";");
+            for (String path : paths) {
+                if(!path.isEmpty()) {
+                    File file = new File(path);
+                    if(file.exists()) {
+                        addNewTab();
+                        fileManager.openFile(getActiveTab(), path);
+                    }
+                }
+            }
+
+            int lastActiveIndex = prefs.getInt("active-tab-index", 0);
+            if (lastActiveIndex >= 0 && lastActiveIndex < tabbedPane.getTabCount()) {
+                tabbedPane.setSelectedIndex(lastActiveIndex);
+            }
+        }
+
+        if (tabbedPane.getTabCount() == 0) { //jeśli nic się nie otworzyło (np. pliki usunięte)
+            addNewTab();
+        }
+    }
+
+    public static void saveSession() {
+        if (!prefs.getBoolean("restoreSession", false)) { //jeśli użytkownik wyłączył przywracanie sesji
+            prefs.remove("open-files-session");
+            prefs.remove("active-tab-index");
+            return;
+        }
+
+        StringBuilder sessionPaths = new StringBuilder();
+        for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+            Tab tab = (Tab) tabbedPane.getComponentAt(i);
+            if (tab.getFile() != null) { //sprawdzenie, czy zakładka pracuje na zapisanym pliku
+                sessionPaths.append(tab.getFile().getAbsolutePath()).append(";");
+            }
+        }
+
+        prefs.put("open-files-session", sessionPaths.toString()); //znajdują się tu ścieżki do plików otwartych w zakładkach
+        prefs.putInt("active-tab-index", tabbedPane.getSelectedIndex()); //przechowuje index aktywnej zakładki
+    }
+
     public static void activateAutosave() {
         if (autoSaveTimer != null) autoSaveTimer.stop(); autoSaveTimer = null; //zabijamy stary timer, jeśli jakiś działał
         if (autoSaveFocusListener != null) window.removeWindowFocusListener(autoSaveFocusListener); autoSaveFocusListener = null; //czyścimy stary listener, jeśli był
         String trigger = prefs.get("autosave-trigger", "never");
         if (trigger.equals("never")) return; //użytkownik nie zgodził się na autosave
-        else if (trigger.equals("onFocusChange")) { //użytkownik wybrał autosave po utracie fokusu
+        if (trigger.equals("onFocusChange")) { //użytkownik wybrał autosave po utracie fokusu
             autoSaveFocusListener = new WindowAdapter() {
                 @Override
                 public void windowLostFocus(WindowEvent e) {
@@ -161,6 +215,80 @@ public class Main {
             int delayValue = Integer.parseInt(trigger);
             autoSaveTimer = new Timer(delayValue * 60 * 1000, e -> saveAllModifiedFiles());
             autoSaveTimer.start();
+        }
+    }
+
+    public static void toggleMarkdownPreview() {
+        if(!isPreviewVisible) { //włączamy podgląd markdown po prawej stronie
+            if (markdownPreview == null) {
+                markdownPreview = new JEditorPane();
+                markdownPreview.setEditable(false);
+                markdownPreview.setContentType("text/html");
+                markdownPreview.addHyperlinkListener(e -> openInBrowser(e.getURL(), e.getEventType()));
+            }
+
+            //przeniesienie tabbedPane do splitPane
+            window.remove(tabbedPane);
+            splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tabbedPane, new JScrollPane(markdownPreview));
+            splitPane.setDividerLocation(window.getWidth() / 2); //na środku okna pionowo
+
+            window.add(splitPane, BorderLayout.CENTER);
+            isPreviewVisible = true;
+            updateMarkdownPreview();
+        } else { //wyłączamy podgląd
+            window.remove(splitPane);
+            window.add(tabbedPane, BorderLayout.CENTER);
+            isPreviewVisible = false;
+        }
+        window.revalidate();
+        window.repaint();
+    }
+
+    public static void updateMarkdownPreview() {
+        if (!isPreviewVisible) return;
+
+        Tab activeTab = getActiveTab();
+        String fileName = activeTab.getTitle().toLowerCase();
+
+        if (fileName.endsWith(".md")) {
+            String rawText = activeTab.getText();
+            String htmlBody = parseMarkdownToHtml(rawText);
+            String css = "code { padding: 2px 4px; border-radius: 3px; font-family: monospace; font-size: 9px; } " +
+                    "pre { padding: 10px; border-radius: 5px; } " +
+                    "blockquote { border-left: 4px solid #ccc; margin-left: 0; padding-left: 10px; }";
+            String fullHtml = "<html><head><style>" + css + "</style></head><body>" + htmlBody + "</body></html>";
+            markdownPreview.setText(fullHtml);
+        }
+    }
+
+    private static String parseMarkdownToHtml(String rawText) {
+        Parser parser = Parser.builder().build();
+        Node document = parser.parse(rawText);
+        HtmlRenderer renderer = HtmlRenderer.builder().build();
+
+        return renderer.render(document);
+    }
+
+    public static void openInBrowser(URL url, HyperlinkEvent.EventType eventType) {
+        if(eventType == HyperlinkEvent.EventType.ACTIVATED && url != null) {
+            try {
+                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    Desktop.getDesktop().browse(url.toURI());
+                } else {
+                    String os = System.getProperty("os.name").toLowerCase();
+                    String urlString = url.toString();
+                    if (os.contains("mac")) {
+                        Runtime.getRuntime().exec(new String[]{"open", urlString});
+                    } else if (os.contains("nix") || os.contains("nux")) {
+                        Runtime.getRuntime().exec(new String[]{"xdg-open", urlString});
+                    } else if (os.contains("win")) {
+                        Runtime.getRuntime().exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", urlString});
+                    }
+                }
+            } catch (Exception ex) {
+                //noinspection CallToPrintStackTrace
+                ex.printStackTrace();
+            }
         }
     }
 
@@ -198,16 +326,37 @@ public class Main {
     public static void updateActiveTabUI() {
         int index = tabbedPane.getSelectedIndex();
         if (index >= 0) {
-            tabbedPane.setTitleAt(index, getActiveTab().getTitle());
-            window.setTitle("SwingNotes - " + getActiveTab().getTitle());
+            Tab activeTab = getActiveTab();
+            tabbedPane.setTitleAt(index, activeTab.getTitle());
+            window.setTitle("SwingNotes - " + activeTab.getTitle());
 
             // aktualizacja statusBaru przy zmianie zakładki
-            int chars = getActiveTab().getCharsCount();
-            int words = getActiveTab().getWordCount();
-            int lines = getActiveTab().getLinesCount();
+            int chars = activeTab.getCharsCount();
+            int words = activeTab.getWordCount();
+            int lines = activeTab.getLinesCount();
             statusBar.setText(I18n.get("statusBar.format", chars, words, lines));
+
+            // podgląd markdown
+            if(mdPreviewItem != null) {
+                boolean isMarkdown = activeTab.getTitle().toLowerCase().endsWith(".md");
+                mdPreviewItem.setEnabled(isMarkdown); // wyszarza opcje w menu, jeśli to nie jest plik .md
+                if(!isMarkdown && isPreviewVisible) { // jeśli aktualna zakładka nie jest plikiem .md a preview markdownu pozostał (np. po przełączeniu na zakładkę z plikiem .txt)
+                    toggleMarkdownPreview();
+                    mdPreviewItem.setSelected(false);
+                }
+                if(isMarkdown && isPreviewVisible) {
+                    updateMarkdownPreview();
+                }
+            }
         } else {
             window.setTitle("SwingNotes");
+            if(mdPreviewItem != null) { //zabezpieczenie po zamknięciu wszystkich kart
+                mdPreviewItem.setEnabled(false);
+                if (isPreviewVisible) {
+                    toggleMarkdownPreview();
+                    mdPreviewItem.setSelected(false);
+                }
+            }
         }
     }
 
@@ -217,6 +366,7 @@ public class Main {
             tabbedPane.setSelectedIndex(i); //pokazuje zakładkę, aby użytkownik wiedział, o który plik jest pytany
             if (!fileManager.canDiscardChanges(tab, "dialog.saveChangesBeforeClosing.msg")) return;
         }
+        saveSession();
         System.exit(0);
     }
 

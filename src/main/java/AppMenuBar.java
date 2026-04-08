@@ -8,11 +8,15 @@ import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.print.PrinterException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.prefs.Preferences;
+import java.util.List;
 
-public class SwingNotesMenuBar extends JMenuBar {
+public class AppMenuBar extends JMenuBar {
     private final FileManager fileManager;
     private final Preferences prefs;
     private final JFrame window;
@@ -22,7 +26,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         return Main.getActiveTab();
     }
 
-    public SwingNotesMenuBar(FileManager fileManager, Preferences prefs, JFrame window) {
+    public AppMenuBar(FileManager fileManager, Preferences prefs, JFrame window) {
         this.fileManager = fileManager;
         this.prefs = prefs;
         this.window = window;
@@ -62,9 +66,11 @@ public class SwingNotesMenuBar extends JMenuBar {
                 else if (choice == 2 || choice == JOptionPane.CLOSED_OPTION) return;
             }
             if (Main.tabbedPane.getTabCount() <= 1) {
+                tab().cleanup();
                 Main.tabbedPane.removeTabAt(0);
                 Main.addNewTab();
             } else {
+                tab().cleanup();
                 Main.tabbedPane.removeTabAt(Main.tabbedPane.getSelectedIndex());
             }
         });
@@ -72,79 +78,35 @@ public class SwingNotesMenuBar extends JMenuBar {
         JMenu recentlyOpenedSubMenu = new JMenu(I18n.get("file.recentlyOpened"));
         makeRecentlyOpenedFilesMenuContent(recentlyOpenedSubMenu);
 
+        JCheckBoxMenuItem restoreSessionItem = new JCheckBoxMenuItem(I18n.get("file.restoreSession"));
+        restoreSessionItem.setSelected(prefs.getBoolean("restoreSession", false));
+        restoreSessionItem.addActionListener(e -> {
+            boolean doRestoreSession = restoreSessionItem.isSelected();
+            prefs.putBoolean("restoreSession", doRestoreSession);
+        });
+
         JMenu fileExtensionSubMenu = new JMenu(I18n.get("file.fileExtension"));
-        makeRecentlyOpenedFilesMenuContent(recentlyOpenedSubMenu);
-
-        String[][] fileTypes = {
-                {"Plain text", "text/plain"},
-                {"ActionScript", "text/actionscript"},
-                {"Assembler (x86)", "text/asm"},
-                {"Assembler (6502)", "text/asm6502"},
-                {"BBCode", "text/bbcode"},
-                {"C", "text/c"},
-                {"Clojure", "text/clojure"},
-                {"C++", "text/cpp"},
-                {"C#", "text/cs"},
-                {"CSS", "text/css"},
-                {"CSV", "text/csv"},
-                {"D", "text/d"},
-                {"Dockerfile", "text/dockerfile"},
-                {"Dart", "text/dart"},
-                {"Delphi/Pascal", "text/delphi"},
-                {"DTD", "text/dtd"},
-                {"Fortran", "text/fortran"},
-                {"Go", "text/golang"},
-                {"Groovy", "text/groovy"},
-                {"Handlebars", "text/handlebars"},
-                {"Hosts", "text/hosts"},
-                {".htaccess", "text/htaccess"},
-                {"HTML", "text/html"},
-                {"INI", "text/ini"},
-                {"Java", "text/java"},
-                {"JavaScript", "text/javascript"},
-                {"JSON", "text/json"},
-                {"JSON (comments)", "text/jshintrc"},
-                {"JSP", "text/jsp"},
-                {"Kotlin", "text/kotlin"},
-                {"LaTeX", "text/latex"},
-                {"Less", "text/less"},
-                {"Lisp", "text/lisp"},
-                {"Lua", "text/lua"},
-                {"Makefile", "text/makefile"},
-                {"Markdown", "text/markdown"},
-                {"MXML", "text/mxml"},
-                {"NSIS", "text/nsis"},
-                {"Perl", "text/perl"},
-                {"PHP", "text/php"},
-                {"PowerShell", "text/powershell"},
-                {"Proto", "text/proto"},
-                {"Properties", "text/properties"},
-                {"Python", "text/python"},
-                {"Ruby", "text/ruby"},
-                {"Rust", "text/rust"},
-                {"SAS", "text/sas"},
-                {"Scala", "text/scala"},
-                {"SQL", "text/sql"},
-                {"Tcl", "text/tcl"},
-                {"TypeScript", "text/typescript"},
-                {"Unix Shell", "text/unix"},
-                {"Visual Basic", "text/vb"},
-                {"VHDL", "text/vhdl"},
-                {"Batch", "text/bat"},
-                {"XML", "text/xml"},
-                {"YAML", "text/yaml"}
-        };
-
-        for (String[] fileType : fileTypes) {
-            JMenuItem languageItem = new JMenuItem(fileType[0]);
-            languageItem.addActionListener(e -> Main.getActiveTab().getTextArea().setSyntaxEditingStyle(fileType[1]));
-            fileExtensionSubMenu.add(languageItem);
+        Properties properties = new Properties();
+        try (InputStream inputStream = getClass().getResourceAsStream("/syntax_types.properties")) {
+            if (inputStream != null) {
+                properties.load(inputStream);
+                List<String> sortedKeys = properties.stringPropertyNames().stream().sorted().toList();
+                for (String fileExtension : sortedKeys) {
+                    String mode = properties.getProperty(fileExtension);
+                    JMenuItem fileTypeItem = new JMenuItem(fileExtension);
+                    fileTypeItem.addActionListener(e -> tab().getTextArea().setSyntaxEditingStyle(mode));
+                    fileExtensionSubMenu.add(fileTypeItem);
+                }
+            }
+        } catch (IOException ex) {
+            //noinspection CallToPrintStackTrace
+            ex.printStackTrace();
         }
 
         JMenuItem openItem = new JMenuItem(I18n.get("file.open"), KeyEvent.VK_O);
         openItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, InputEvent.CTRL_DOWN_MASK));
         openItem.addActionListener(e -> {
-            fileManager.openFile(tab(), null, prefs);
+            fileManager.openFile(tab(), null);
             makeRecentlyOpenedFilesMenuContent(recentlyOpenedSubMenu);
         });
 
@@ -216,6 +178,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         fileMenu.add(closeTabItem);
         fileMenu.add(openItem);
         fileMenu.add(recentlyOpenedSubMenu);
+        fileMenu.add(restoreSessionItem);
         fileMenu.add(fileExtensionSubMenu);
         fileMenu.addSeparator();
         fileMenu.add(saveItem);
@@ -256,7 +219,7 @@ public class SwingNotesMenuBar extends JMenuBar {
 
         JMenuItem findAndReplaceItem = new JMenuItem(I18n.get("edit.findAndReplace"));
         findAndReplaceItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK));
-        findAndReplaceItem.addActionListener(e -> new FindReplaceDialog(window, tab().getTextArea(), fileManager, tab()).setVisible(true));
+        findAndReplaceItem.addActionListener(e -> new FindReplaceDialog(window, fileManager, tab()).setVisible(true));
 
         editMenu.add(copyItem);
         editMenu.add(cutItem);
@@ -342,6 +305,9 @@ public class SwingNotesMenuBar extends JMenuBar {
             tab().toggleErrorStrip(showErrorStrip);
         });
 
+        Main.mdPreviewItem = new JCheckBoxMenuItem(I18n.get("view.markdownPreview"));
+        Main.mdPreviewItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.CTRL_DOWN_MASK));
+        Main.mdPreviewItem.addActionListener(e -> Main.toggleMarkdownPreview());
 
         JCheckBoxMenuItem lineWrapItem = new JCheckBoxMenuItem(I18n.get("view.lineWrap"));
         lineWrapItem.setSelected(prefs.getBoolean("lineWrap", true));
@@ -373,6 +339,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         viewMenu.add(syntaxThemeSubMenu);
         viewMenu.addSeparator();
         viewMenu.add(errorStripItem);
+        viewMenu.add(Main.mdPreviewItem);
         viewMenu.add(lineWrapItem);
         viewMenu.add(fontItem);
 
@@ -406,7 +373,7 @@ public class SwingNotesMenuBar extends JMenuBar {
         } else {
             for (String path : recents.split(",")) {
                 JMenuItem fileItem = new JMenuItem(path);
-                fileItem.addActionListener(e -> fileManager.openFile(tab(), path, prefs));
+                fileItem.addActionListener(e -> fileManager.openFile(tab(), path));
                 recentlyOpenedSubMenu.add(fileItem);
             }
         }

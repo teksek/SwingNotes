@@ -6,13 +6,10 @@ import org.fife.ui.rtextarea.RTextScrollPane;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.event.HyperlinkEvent;
 import java.awt.*;
 import java.awt.dnd.*;
 import java.awt.datatransfer.DataFlavor;
 import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.prefs.Preferences;
 import java.util.List;
 
@@ -47,11 +44,10 @@ public class Tab extends JPanel {
         textArea.setLineWrap(lineWrap);
         textArea.setWrapStyleWord(true);
 
-        textArea.setComponentPopupMenu(new SwingNotesContextMenu(textArea));
+        textArea.setComponentPopupMenu(new EditorContextMenu(textArea));
 
-        // aktualizacja paska statusu przy każdej zmianie tekstu
         textArea.getDocument().addDocumentListener(new DocumentListener() {
-            private void updateStatusBarOnChange() {
+            private void updateStatusBarOnChange() { // aktualizacja paska statusu przy każdej zmianie tekstu
                 int charsCount = Tab.this.getCharsCount();
                 int linesCount = Tab.this.getLinesCount();
                 int wordCount = Tab.this.getWordCount();
@@ -62,14 +58,16 @@ public class Tab extends JPanel {
                 if (index != -1) {
                     Main.tabbedPane.setTitleAt(index, Tab.this.getTitle());
                 }
+                Main.updateMarkdownPreview(); //jeśli edytowany jest plik .md
             }
 
             private void checkChanges() {
-                String currentText = textArea.getText();
+                int currentLength = textArea.getDocument().getLength();
+                int lastLength = lastSavedContent.length();
                 boolean changed;
 
-                if (currentText.length() != lastSavedContent.length()) changed = true;
-                else changed = !currentText.equals(lastSavedContent);
+                if (currentLength != lastLength) changed = true;
+                else changed = !textArea.getText().equals(lastSavedContent);
 
                 if(changed != fileChanged) {
                     setFileChanged(changed);
@@ -85,28 +83,7 @@ public class Tab extends JPanel {
         });
 
         // obsługa linków
-        textArea.addHyperlinkListener(e -> {
-            if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-                if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                    try {
-                        Desktop.getDesktop().browse(e.getURL().toURI());
-                    } catch (IOException | URISyntaxException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                } else {
-                    String os = System.getProperty("os.name").toLowerCase();
-                    try {
-                        if (os.contains("mac")) { //mac
-                            Runtime.getRuntime().exec(new String[]{"open", e.getURL().toString()});
-                        } else { //linux
-                            Runtime.getRuntime().exec(new String[]{"xdg-open", e.getURL().toString()});
-                        }
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-            }
-        });
+        textArea.addHyperlinkListener(e -> Main.openInBrowser(e.getURL(), e.getEventType()));
 
         new DropTarget(textArea, new DropTargetAdapter() { // implementacja mechanizmu drag-and-drop plików
             @Override
@@ -119,7 +96,7 @@ public class Tab extends JPanel {
                         List<File> droppedFiles = (List<File>) dtde.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
 
                         if (!droppedFiles.isEmpty()) {
-                            fileManager.openFile(Tab.this, droppedFiles.getFirst().getAbsolutePath(), prefs);
+                            fileManager.openFile(Tab.this, droppedFiles.getFirst().getAbsolutePath());
                         }
                         dtde.dropComplete(true);
                     } else {
@@ -148,6 +125,7 @@ public class Tab extends JPanel {
         return fileChanged ? "*" + name : name;
     }
     public RSyntaxTextArea getTextArea() { return textArea; }
+    public String getText() { return textArea.getText(); }
     public File getFile() { return file; }
     public boolean isFileChanged() { return fileChanged; }
     public void setFile(File file) { this.file = file; }
@@ -158,4 +136,5 @@ public class Tab extends JPanel {
     public int getLinesCount() { return textArea.getLineCount(); }
     public int getWordCount() { return textArea.getText().isBlank() ? 0 : textArea.getText().split("\\s+").length; }
     public void setLastSavedContent(String savedContent) { this.lastSavedContent = savedContent; }
+    public void cleanup() { LanguageSupportFactory.get().unregister(textArea); }
 }
