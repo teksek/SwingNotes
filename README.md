@@ -130,4 +130,4 @@ Projekt edukacyjny stworzony w ramach nauki programowania w technikum. Rozbudowa
 
 ## Author
 Created by [teksek](https://github.com/teksek) with ❤️.
-<img width="131" height="42" alt="Developed-By-a-Human-Not-By-AI-Badge-white" src="https://github.com/user-attachments/assets/0f07fc18-eefa-4088-b475-3dc47db934df" />
+<br><img width="131" height="42" alt="Developed-By-a-Human-Not-By-AI-Badge-white" src="https://github.com/user-attachments/assets/0f07fc18-eefa-4088-b475-3dc47db934df" />
